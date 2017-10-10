@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Bluetooth Demo App</string>
+    <string name="main_header_0">Found Devices</string>
+</resources>
