@@ -67,11 +67,15 @@ public class MainActivity extends Activity {
         {
 
             String action = intent.getAction();
+            mBluetoothAdapter.cancelDiscovery();
+
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 //bluetooth device is found.
 
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 foundDevices.put(device.getAddress(), device);
+
+
 
                 //hide progressbar
                 spinningCircle.setVisibility(View.INVISIBLE);
@@ -99,9 +103,6 @@ public class MainActivity extends Activity {
     //update shown list of detected bluetooth devices
     private void updateDeviceList(){
 
-        ArrayList<String> devices = new ArrayList<String>();
-
-        mAdapter = new DeviceAdapter();
         deviceList.setAdapter(mAdapter);
 
         if(foundDevices == null)
@@ -111,11 +112,13 @@ public class MainActivity extends Activity {
         }
         else if(foundDevices.size() <= 0)
         {
-            devices.add("No devices found!");
+            Log.e("Bluetooth", "No devices available");
+            return;
         }
         else
         {
             DeviceAdapter deviceListAdapter = new DeviceAdapter(foundDevices);
+            deviceListAdapter.mCallback.selectDevice(); //https://developer.android.com/training/basics/fragments/communicating.html
             deviceList.setAdapter(deviceListAdapter);
         }
     }
@@ -139,28 +142,6 @@ public class MainActivity extends Activity {
         layoutManager = new LinearLayoutManager(this);
 
         deviceList.setLayoutManager(layoutManager);
-
-        deviceList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            @Override
-            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-
-                //address is selected
-                String address = (String)parent.getItemAtPosition(position);
-                boolean addressExists = foundDevices.containsKey(address);
-
-                if(addressExists)
-                {
-
-                }
-                else
-                {
-                    Log.e("Bluetooth", "Item clicked, but address was not found in arraymap");
-                    Toast.makeText(getApplicationContext(), "Error!. Address was not found!", Toast.LENGTH_SHORT);
-                }
-
-                return false;
-            }
-        });
 
         if (mBluetoothAdapter == null) {
             //not supported

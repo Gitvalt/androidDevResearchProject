@@ -18,6 +18,18 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
 
     private ArrayMap<String, BluetoothDevice> deviceArrayMap;
 
+    getSelectedDevice mCallback;
+
+    public interface getSelectedDevice {
+        public void selectDevice();
+    }
+
+
+    @Override
+    public void onAttachedToRecyclerView(RecyclerView recyclerView) {
+        mCallback = (getSelectedDevice) recyclerView;
+    }
+
     public DeviceAdapter(ArrayMap<String, BluetoothDevice> devList)
     {
         deviceArrayMap = devList;
@@ -54,10 +66,15 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
             deviceAddress = (TextView)itemView.findViewById(R.id.Address);
             deviceStatus = (TextView)itemView.findViewById(R.id.Status);
 
-            itemView.setOnClickListener(new View.OnClickListener() {
+            itemView.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
-                public void onClick(View v) {
+                public boolean onLongClick(View v) {
+                    //we got a click
                     Log.w("Got CLICK", "We received a click from you! " + getAdapterPosition());
+
+
+
+                    return false;
                 }
             });
 
