@@ -25,6 +25,7 @@ import android.support.v4.util.ArrayMap;
 import android.support.v4.widget.SimpleCursorAdapter;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.view.ActionMode;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -40,11 +41,13 @@ import android.widget.Toast;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Handler;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements DeviceAdapter.DeviceListener {
 
 
     /**
@@ -74,6 +77,12 @@ public class MainActivity extends Activity {
     //private ArrayList<BluetoothDevice> foundDevices;
     private BluetoothAdapter mBluetoothAdapter;
 
+    public enum DeviceAction {
+        Bond,
+        unBond
+    }
+
+
     /**
      * App is created
      * @param savedInstanceState
@@ -98,14 +107,15 @@ public class MainActivity extends Activity {
 
         deviceList.setLayoutManager(layoutManager);
 
-        if (mBluetoothAdapter == null) {
-            //not supported
+        //check if phone supports bluetooth communication
+        if (mBluetoothAdapter == null)
+        {
+
+            //Bluetooth is not supported
             Log.e("Bluetooth", "Bluetooth is not supported by this device");
 
             AlertDialog.Builder alert = new AlertDialog.Builder(this);
-
             alert.setTitle("Bluetooth not supported");
-
             alert.setMessage("I guess this phone cannot use Bluetooth..." + "\n" + "\n" + "Hint: Android emulator cannot emulate bluetooth, use real phone instead");
             alert.setCancelable(false);
             alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -115,31 +125,36 @@ public class MainActivity extends Activity {
                     System.exit(0);
                 }
             });
-
             AlertDialog dialog = alert.create();
+
             dialog.show();
         }
-
         else
         {
             //bluetooth is supported
-            Toast.makeText(getApplicationContext(), "Bluetooth is implemented!", Toast.LENGTH_SHORT).show();
-
-            //is bluetooth enabled?
-            if (!mBluetoothAdapter.isEnabled()) {
-                //if not enabled
-                Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                startActivityForResult(enableBluetooth, ENABLE_BLUETOOTH_CODE);
-            }
-            else {
-                bluetoothIsEnabled();
-            }
-
-
+            Log.i("Bluetooth", "Bluetooth is implemented!");
+            BluetoothPermission();
         }
 
 
 
+    }
+
+    /**
+     * Check if bluetooth has been activated in the device
+     */
+    private void BluetoothPermission(){
+        //is bluetooth on?
+        if (!mBluetoothAdapter.isEnabled()) {
+            //Not on --> ask to be turned on
+            Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBluetooth, ENABLE_BLUETOOTH_CODE);
+        }
+        else
+        {
+            //bluetooth is on, move to
+            bluetoothIsEnabled();
+        }
     }
 
     /**
@@ -164,44 +179,73 @@ public class MainActivity extends Activity {
             String action = intent.getAction();
             mBluetoothAdapter.cancelDiscovery();
 
-            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                //bluetooth device is found.
+            switch (action){
+                case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
+                    break;
+                case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
+                    break;
+                case BluetoothDevice.ACTION_BOND_STATE_CHANGED:
 
-                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                foundDevices.put(device.getAddress(), device);
+                    Log.i("state_changed", "state has changed!");
 
+                    BluetoothDevice deviceInput = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
+                    switch (deviceInput.getBondState()){
+                        case BluetoothDevice.BOND_BONDED:
+                            Log.i("state_changed", "Bonded!");
+                            break;
+                        case BluetoothDevice.BOND_BONDING:
+                            Log.i("state_changed", "Bonding!");
+                            break;
+                        case BluetoothDevice.BOND_NONE:
+                            Log.i("state_changed", "No Bond!");
+                            break;
+                    }
 
-                //hide progressbar
-                spinningCircle.setVisibility(View.INVISIBLE);
+                    updateDeviceList();
+                    break;
+                case BluetoothDevice.ACTION_FOUND:
+                    //bluetooth device is found.
 
-                updateDeviceList();
+                    BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                    foundDevices.put(device.getAddress(), device);
 
-                //ConnectThread conThread = new ConnectThread(device);
+                    //hide progressbar
+                    spinningCircle.setVisibility(View.INVISIBLE);
 
-                /*
-                Discover me
+                    updateDeviceList();
 
-                AcceptThread thread = new AcceptThread();
-                Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-                discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION,0);
-                startActivity(discoverableIntent);
-
-                thread.run();
-                */
-
-                Log.i("Bluetooth_brodcast", "Bluetooth device detected!");
+                    //ConnectThread conThread = new ConnectThread(device);
+                    Log.i("Bluetooth_broadcast", "Bluetooth device detected!");
+                    break;
             }
         }
     };
 
+    /**
+     * Make this phone discoverable for by other devices
+     */
+    private void activateDiscoverability(){
+
+        //Discover me
+
+        AcceptThread thread = new AcceptThread();
+        Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+        discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION,0);
+        startActivity(discoverableIntent);
+
+        thread.run();
+
+    }
 
     /**
-     * set to register found Bluetooth requests
+     * set app to register thrown bluetooth broadcasts and then move to finding devices
      */
     private void bluetoothIsEnabled(){
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
         registerReceiver(mReceiver, filter);
+        registerReceiver(mReceiver, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
+
         FindNewDevices();
     }
 
@@ -209,14 +253,47 @@ public class MainActivity extends Activity {
      * Check if selected device has been paired with
      * @param device, device under inception
      */
-    private void IsDevicePaired(BluetoothDevice device) {
+    private boolean IsDevicePaired(BluetoothDevice device)
+    {
+        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
+        BluetoothDevice[] devices = (BluetoothDevice[])pairedDevices.toArray();
+
+        boolean found = false;
+        for(int i = 0; i < devices.length; i++){
+            if(devices[i].equals(device)){
+                found = true;
+            }
+        }
+
+        if(found){
+            return true;
+        }
+        else {
+            return false;
+        }
+
     }
 
     /**
      * Read already paired BluetoothDevices from phone's bluetooth adapter
      */
     private void getPairedDevices(){
+        /**
+            Get paired devices and save them to a array
+         */
+        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
 
+        if(pairedDevices.size() > 0) {
+            for(BluetoothDevice bluetoothDevice : pairedDevices){
+                if(foundDevices.containsValue(bluetoothDevice)){
+                    //do nothing
+                }
+                else {
+                    //add paired device to found devices
+                    foundDevices.put(bluetoothDevice.getAddress(), bluetoothDevice);
+                }
+            }
+        }
     }
 
     /**
@@ -282,6 +359,7 @@ public class MainActivity extends Activity {
         if(mBluetoothAdapter.getState() == BluetoothAdapter.STATE_ON)
         {
             spinningCircle.setVisibility(View.VISIBLE);
+            getPairedDevices();
             mBluetoothAdapter.startDiscovery();
         }
         else
@@ -292,11 +370,57 @@ public class MainActivity extends Activity {
     }
 
     /**
+     * Get callback from DeviceAdapter and execute pairing
+     */
+    @Override
+    public void selectDevice(BluetoothDevice selectedDevice, DeviceAction action) {
+        Log.i("Bluetooth", "Item has been selected + " + action);
+        Toast.makeText(getApplicationContext(), "Got interface", Toast.LENGTH_SHORT).show();
+
+        switch (action){
+            case Bond:
+                Log.i("Bluetooth", "Bonding with device '" + selectedDevice.getName() + "' at " + selectedDevice.getAddress());
+                selectedDevice.createBond();
+                break;
+
+            case unBond:
+                Log.i("Bluetooth", "Breaking bond with device '" + selectedDevice.getName() + "' at " + selectedDevice.getAddress());
+                try {
+                    Method m = selectedDevice.getClass().getMethod("removeBond", (Class[]) null);
+                    m.invoke(selectedDevice, (Object[]) null);
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Warning");
+                    builder.setMessage("Currently only the phone is unpaired. Other device still thinks there is a connection. For reconnection remove pairing manually from other device");
+                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+
+                        }
+                    });
+
+                    AlertDialog alert = builder.create();
+                    alert.show();
+
+                }
+                catch(Exception e)
+                {
+                    Log.e("Bluetooth error", "Removing bond failed");
+                }
+                break;
+        }
+
+    }
+
+    /**
      * Update shown recyclerView when new bluetooth devices has been found
      */
     private void updateDeviceList(){
 
+
         deviceList.setAdapter(mAdapter);
+
+
 
         if(foundDevices == null)
         {
@@ -310,11 +434,17 @@ public class MainActivity extends Activity {
         }
         else
         {
-            DeviceAdapter deviceListAdapter = new DeviceAdapter(foundDevices);
-            deviceListAdapter.mCallback.selectDevice(); //https://developer.android.com/training/basics/fragments/communicating.html
-            deviceList.setAdapter(deviceListAdapter);
+            if(deviceList.getAdapter() == null) {
+                DeviceAdapter deviceListAdapter = new DeviceAdapter(foundDevices, this);
+                deviceList.setAdapter(deviceListAdapter);
+            }
+            else
+            {
+                deviceList.getAdapter().notifyDataSetChanged();
+            }
         }
     }
+
 
     /**
      * If permissions were granted
@@ -347,9 +477,31 @@ public class MainActivity extends Activity {
                 //Bluetooth request accepted?
                 if (resultCode == RESULT_OK) {
                     bluetoothIsEnabled();
-                } else {
-                    //bluetooth off
-                    Toast.makeText(getApplicationContext(), "Turning Bluetooth on not allowed", Toast.LENGTH_SHORT).show();
+                }
+                else
+                {
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Permission required");
+                    builder.setMessage("You need to give permissions for bluetooth to used");
+                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            BluetoothPermission();
+                        }
+                    });
+
+                    builder.setNegativeButton("Exit", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            Log.i("App", "Exiting program");
+                            System.exit(0);
+                        }
+                    });
+
+                    builder.create();
+                    AlertDialog dialog = builder.show();
+
                 }
                 break;
             case ALLOW_BLUETOOTH_CODE:
@@ -365,6 +517,8 @@ public class MainActivity extends Activity {
         }
     }
 
+
+    //When connection to the device has been enstablished:
     /**
      * @class   AcceptThread     receive Bluetooth connections from other devices.
      */

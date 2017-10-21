@@ -11,28 +11,35 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 /**
- * Created by K1967 on 10.10.2017.
+ * @class   DeviceAdapter   Display data in a RecyclerView element
  */
-
 public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder> {
 
+    /**
+     * @member  deviceArrayMap   Map of found devices
+     */
     private ArrayMap<String, BluetoothDevice> deviceArrayMap;
+    public DeviceListener callback;
 
-    getSelectedDevice mCallback;
 
-    public interface getSelectedDevice {
-        public void selectDevice();
+
+    public interface DeviceListener {
+        void selectDevice(BluetoothDevice selectedDevice, MainActivity.DeviceAction action);
     }
+
 
 
     @Override
-    public void onAttachedToRecyclerView(RecyclerView recyclerView) {
-        mCallback = (getSelectedDevice) recyclerView;
+    public void onAttachedToRecyclerView(RecyclerView recyclerView)
+    {
+
     }
 
-    public DeviceAdapter(ArrayMap<String, BluetoothDevice> devList)
+    //Constructor
+    public DeviceAdapter(ArrayMap<String, BluetoothDevice> devList, DeviceListener deviceListener)
     {
         deviceArrayMap = devList;
+        this.callback = deviceListener;
     }
 
     @Override
@@ -46,7 +53,22 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
         String DeviceAddress = deviceArrayMap.keyAt(position);
         holder.deviceImage.setImageResource(R.drawable.ic_bluetooth_connected_black_24dp);
         holder.deviceAddress.setText(DeviceAddress);
-        holder.deviceStatus.setText("NOPE!");
+
+        int state = deviceArrayMap.valueAt(position).getBondState();
+
+        switch (state){
+            case BluetoothDevice.BOND_BONDING:
+                holder.deviceStatus.setText("Bonding...");
+                break;
+            case BluetoothDevice.BOND_BONDED:
+                holder.deviceStatus.setText("Bonded with device!");
+                break;
+            case BluetoothDevice.BOND_NONE:
+                holder.deviceStatus.setText("Not bonded");
+                break;
+        }
+
+
     }
 
     @Override
@@ -66,14 +88,37 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
             deviceAddress = (TextView)itemView.findViewById(R.id.Address);
             deviceStatus = (TextView)itemView.findViewById(R.id.Status);
 
+
+
             itemView.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
                 public boolean onLongClick(View v) {
                     //we got a click
-                    Log.w("Got CLICK", "We received a click from you! " + getAdapterPosition());
+                    Log.w("Got CLICK", "We received a long click from you! At position " + getAdapterPosition());
+
+                    BluetoothDevice selectedDevice = deviceArrayMap.valueAt(getAdapterPosition());
+                    boolean continueActions = true;
+                    MainActivity.DeviceAction action = null;
 
 
+                    switch (selectedDevice.getBondState()){
+                        case BluetoothDevice.BOND_BONDED:
+                            action = MainActivity.DeviceAction.unBond;
+                            break;
+                        case BluetoothDevice.BOND_BONDING:
+                            continueActions = false;
+                            break;
+                        case BluetoothDevice.BOND_NONE:
+                            action = MainActivity.DeviceAction.Bond;
+                            break;
+                    }
 
+                    if(continueActions) {
+                        callback.selectDevice(selectedDevice, action);
+                    }
+                    else {
+                        Log.w("Bluetooth", "Device is still bonding");
+                    }
                     return false;
                 }
             });
