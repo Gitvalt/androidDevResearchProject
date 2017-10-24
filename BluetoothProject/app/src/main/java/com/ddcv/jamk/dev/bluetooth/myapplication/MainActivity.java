@@ -44,8 +44,11 @@ import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.UUID;
 import java.util.logging.Handler;
+import java.util.logging.LogRecord;
 
 public class MainActivity extends Activity implements DeviceAdapter.DeviceListener {
 
@@ -177,7 +180,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         {
 
             String action = intent.getAction();
-            mBluetoothAdapter.cancelDiscovery();
+            //mBluetoothAdapter.cancelDiscovery();
 
             switch (action){
                 case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
@@ -301,6 +304,15 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
      */
     private void FindNewDevices() {
 
+        final android.os.Handler handler = new android.os.Handler();
+
+        //Empty list
+        if(foundDevices.isEmpty() != true){
+            foundDevices.clear();
+            deviceList.getAdapter().notifyDataSetChanged();
+
+        }
+
         //check if app has permission to use Bluetooth (X >= Android 6.0)
         int selfPermission = PermissionChecker.checkSelfPermission(getApplicationContext(), Manifest.permission.BLUETOOTH);
         int adminPermission = PermissionChecker.checkSelfPermission(getApplicationContext(), Manifest.permission.BLUETOOTH_ADMIN);
@@ -361,6 +373,17 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
             spinningCircle.setVisibility(View.VISIBLE);
             getPairedDevices();
             mBluetoothAdapter.startDiscovery();
+
+            //close search after {10 s} time
+            long time = 10 * 1000;
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mBluetoothAdapter.cancelDiscovery();
+                    Log.i("Bluetooth_Scanning", "Ending scanning...");
+                }
+            }, time);
+
         }
         else
         {
