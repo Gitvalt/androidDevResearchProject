@@ -73,17 +73,10 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
     private RecyclerView.Adapter mAdapter;
     private RecyclerView.LayoutManager layoutManager;
 
+    private bluetoothController BluetoothController;
+
     private static final int ENABLE_BLUETOOTH_CODE = 123;
     private static final int ALLOW_BLUETOOTH_CODE = 456;
-
-    private ArrayMap<String, BluetoothDevice> foundDevices;
-    //private ArrayList<BluetoothDevice> foundDevices;
-    private BluetoothAdapter mBluetoothAdapter;
-
-    public enum DeviceAction {
-        Bond,
-        unBond
-    }
 
 
     /**
@@ -95,12 +88,6 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        //init private foundDevice param
-        foundDevices = new ArrayMap<>();
-
-        //check if bluetooth is supported with this device
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
         //setup progressbar for scanning devices
         spinningCircle = (ProgressBar)findViewById(R.id.scanningSpinner);
 
@@ -108,26 +95,28 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         deviceList = (RecyclerView)findViewById(R.id.listView);
         layoutManager = new LinearLayoutManager(this);
 
+        BluetoothController = new bluetoothController(getApplicationContext(), this, mReceiver);
+
         deviceList.setLayoutManager(layoutManager);
 
         //check if phone supports bluetooth communication
-        if (mBluetoothAdapter == null)
+        if (BluetoothController.mBluetoothAdapter == null)
         {
 
             //Bluetooth is not supported
             Log.e("Bluetooth", "Bluetooth is not supported by this device");
 
             AlertDialog.Builder alert = new AlertDialog.Builder(this);
-            alert.setTitle("Bluetooth not supported");
-            alert.setMessage("I guess this phone cannot use Bluetooth..." + "\n" + "\n" + "Hint: Android emulator cannot emulate bluetooth, use real phone instead");
-            alert.setCancelable(false);
-            alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    //close application
-                    System.exit(0);
-                }
-            });
+                alert.setTitle("Bluetooth not supported");
+                alert.setMessage("I guess this phone cannot use Bluetooth..." + "\n" + "\n" + "Hint: Android emulator cannot emulate bluetooth, use real phone instead");
+                alert.setCancelable(false);
+                alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        //close application
+                        System.exit(0);
+                    }
+                });
             AlertDialog dialog = alert.create();
 
             dialog.show();
@@ -145,29 +134,39 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
 
     /**
      * Check if bluetooth has been activated in the device
+     * if permission is allowed
      */
     private void BluetoothPermission(){
+
         //is bluetooth on?
-        if (!mBluetoothAdapter.isEnabled()) {
-            //Not on --> ask to be turned on
+        if (!BluetoothController.mBluetoothAdapter.isEnabled()) {
+            //Not on --> ask to be turned on --> get result in onActivityResult
             Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBluetooth, ENABLE_BLUETOOTH_CODE);
         }
         else
         {
-            //bluetooth is on, move to
-            bluetoothIsEnabled();
+            //bluetooth is on, move to registering service
+            BluetoothController.registerBluetoothService();
+            lookForDevices();
         }
     }
 
-    /**
-     * When app is closed, remove registers
-     */
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        unregisterReceiver(mReceiver);
+    private void lookForDevices(){
+
+        ArrayMap<String, BluetoothDevice> foundDevices = BluetoothController.foundDevices;
+
+        //Empty list
+        if(foundDevices.isEmpty() != true){
+            foundDevices.clear();
+            deviceList.getAdapter().notifyDataSetChanged();
+        }
+
+        BluetoothController.FindNewDevices();
+        //program continues in BroadcastReceiver.ActionDiscovery finished
     }
+
+    //Receivers:
 
     /**
      * @callback mReceiver
@@ -180,12 +179,28 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         {
 
             String action = intent.getAction();
-            //mBluetoothAdapter.cancelDiscovery();
+            //BluetoothController.mBluetoothAdapter.cancelDiscovery();
 
             switch (action){
                 case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
+                    spinningCircle.setVisibility(View.VISIBLE);
                     break;
                 case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
+                    spinningCircle.setVisibility(View.INVISIBLE);
+                    break;
+                case BluetoothDevice.ACTION_FOUND:
+                    //bluetooth device is found.
+
+                    BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+
+                    BluetoothController.foundDevices.put(device.getAddress(), device);
+
+                    //hide progressbar
+                    spinningCircle.setVisibility(View.INVISIBLE);
+
+                    updateDeviceList();
+
+                    Log.i("Bluetooth_broadcast", "Bluetooth device detected!");
                     break;
                 case BluetoothDevice.ACTION_BOND_STATE_CHANGED:
 
@@ -207,196 +222,96 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
 
                     updateDeviceList();
                     break;
-                case BluetoothDevice.ACTION_FOUND:
-                    //bluetooth device is found.
-
-                    BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                    foundDevices.put(device.getAddress(), device);
-
-                    //hide progressbar
-                    spinningCircle.setVisibility(View.INVISIBLE);
-
-                    updateDeviceList();
-
-                    //ConnectThread conThread = new ConnectThread(device);
-                    Log.i("Bluetooth_broadcast", "Bluetooth device detected!");
-                    break;
             }
         }
     };
 
-    /**
-     * Make this phone discoverable for by other devices
-     */
-    private void activateDiscoverability(){
-
-        //Discover me
-
-        AcceptThread thread = new AcceptThread();
-        Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-        discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION,0);
-        startActivity(discoverableIntent);
-
-        thread.run();
-
-    }
 
     /**
-     * set app to register thrown bluetooth broadcasts and then move to finding devices
+     * If permissions were granted
+     * @param requestCode   Code to indetify send request
+     * @param permissions      what permissions were asked
+     * @param grantResults      what was the response from phone
      */
-    private void bluetoothIsEnabled(){
-        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-        registerReceiver(mReceiver, filter);
-        registerReceiver(mReceiver, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
-
-        FindNewDevices();
-    }
-
-    /**
-     * Check if selected device has been paired with
-     * @param device, device under inception
-     */
-    private boolean IsDevicePaired(BluetoothDevice device)
-    {
-        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-        BluetoothDevice[] devices = (BluetoothDevice[])pairedDevices.toArray();
-
-        boolean found = false;
-        for(int i = 0; i < devices.length; i++){
-            if(devices[i].equals(device)){
-                found = true;
-            }
-        }
-
-        if(found){
-            return true;
-        }
-        else {
-            return false;
-        }
-
-    }
-
-    /**
-     * Read already paired BluetoothDevices from phone's bluetooth adapter
-     */
-    private void getPairedDevices(){
-        /**
-            Get paired devices and save them to a array
-         */
-        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-
-        if(pairedDevices.size() > 0) {
-            for(BluetoothDevice bluetoothDevice : pairedDevices){
-                if(foundDevices.containsValue(bluetoothDevice)){
-                    //do nothing
-                }
-                else {
-                    //add paired device to found devices
-                    foundDevices.put(bluetoothDevice.getAddress(), bluetoothDevice);
-                }
-            }
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode){
+            case ALLOW_BLUETOOTH_CODE:
+                BluetoothController.FindNewDevices();
+                break;
+            default:
+                break;
         }
     }
 
+
     /**
-     * Check permissions for detecting bluetooth devices and start scanning
+     * Was bluetooth enabled?
+     * @param requestCode
+     * @param resultCode
+     * @param data
      */
-    private void FindNewDevices() {
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
-        final android.os.Handler handler = new android.os.Handler();
-
-        //Empty list
-        if(foundDevices.isEmpty() != true){
-            foundDevices.clear();
-            deviceList.getAdapter().notifyDataSetChanged();
-
-        }
-
-        //check if app has permission to use Bluetooth (X >= Android 6.0)
-        int selfPermission = PermissionChecker.checkSelfPermission(getApplicationContext(), Manifest.permission.BLUETOOTH);
-        int adminPermission = PermissionChecker.checkSelfPermission(getApplicationContext(), Manifest.permission.BLUETOOTH_ADMIN);
-
-        int fineLocation = PermissionChecker.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION);
-        int coarseLocation = PermissionChecker.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION);
-
-        int granted = PermissionChecker.PERMISSION_GRANTED;
-
-        /**
-         * If some of the necessary permissions are not granted, App will ask the user for them...
-         */
-        if(selfPermission != granted || adminPermission != granted || fineLocation != granted || coarseLocation != granted)
-        {
-            /**
-             * Show alert dialog informing what permissions are required for this app to work
-             */
-            AlertDialog.Builder alert = new AlertDialog.Builder(this);
-            alert.setTitle("Permissions have not been granted");
-            alert.setMessage("Permissions for coarse/fine location and Bluetooth required");
-            alert.setCancelable(false);
-
-            alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    FindNewDevices(); //rerun current method
+        switch (requestCode){
+            case ENABLE_BLUETOOTH_CODE:
+                //Bluetooth request accepted?
+                if (resultCode == RESULT_OK) {
+                    //if accepted register bluetooth service
+                    BluetoothController.registerBluetoothService();
+                    lookForDevices();
                 }
-            });
+                else
+                {
 
-            alert.setNegativeButton("Exit", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    //close application
-                    System.exit(0);
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Permission required");
+                    builder.setMessage("You need to give permissions for bluetooth to used");
+                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            BluetoothPermission();
+                        }
+                    });
+
+                    builder.setNegativeButton("Exit", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            Log.i("App", "Exiting program");
+                            System.exit(0);
+                        }
+                    });
+
+
+                    AlertDialog dialog = builder.create();
+                    dialog.show();
+
                 }
-            });
+                break;
 
-            AlertDialog dialog = alert.create();
-            dialog.show();
-
-            /**
-             * Send the required permissions permissionRequest
-             */
-            ActivityCompat.requestPermissions(this, new String[]{
-                    Manifest.permission.BLUETOOTH,
-                    Manifest.permission.BLUETOOTH_ADMIN,
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-            }, ALLOW_BLUETOOTH_CODE);
-            return;
-        }
-
-        /**
-         * start searching devices
-         */
-        if(mBluetoothAdapter.getState() == BluetoothAdapter.STATE_ON)
-        {
-            spinningCircle.setVisibility(View.VISIBLE);
-            getPairedDevices();
-            mBluetoothAdapter.startDiscovery();
-
-            //close search after {10 s} time
-            long time = 10 * 1000;
-            handler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    mBluetoothAdapter.cancelDiscovery();
-                    Log.i("Bluetooth_Scanning", "Ending scanning...");
+            case ALLOW_BLUETOOTH_CODE:
+                if (resultCode == RESULT_OK) {
+                    BluetoothController.FindNewDevices();
+                } else {
+                    //bluetooth off
+                    Toast.makeText(getApplicationContext(), "Bluetooth access permission denied", Toast.LENGTH_SHORT).show();
                 }
-            }, time);
-
+                break;
+            default:
+                break;
         }
-        else
-        {
-            Log.e("Bluetooth", "Bluetooth service is not on! Cant start scanning for new devices!");
-        }
-
     }
 
+    //----
+
+
+    //Handling recycler view:
     /**
      * Get callback from DeviceAdapter and execute pairing
      */
     @Override
-    public void selectDevice(BluetoothDevice selectedDevice, DeviceAction action) {
+    public void selectDevice(BluetoothDevice selectedDevice, bluetoothController.DeviceAction action) {
         Log.i("Bluetooth", "Item has been selected + " + action);
         Toast.makeText(getApplicationContext(), "Got interface", Toast.LENGTH_SHORT).show();
 
@@ -442,7 +357,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
 
 
         deviceList.setAdapter(mAdapter);
-
+        ArrayMap<String, BluetoothDevice> foundDevices = BluetoothController.foundDevices;
 
 
         if(foundDevices == null)
@@ -468,80 +383,12 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         }
     }
 
-
-    /**
-     * If permissions were granted
-     * @param requestCode   Code to indetify send request
-     * @param permissions      what permissions were asked
-     * @param grantResults      what was the response from phone
-     */
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        switch (requestCode){
-            case ALLOW_BLUETOOTH_CODE:
-                FindNewDevices();
-                break;
-            default:
-                break;
-        }
-    }
-
-    /**
-     * Was bluetooth enabled?
-     * @param requestCode
-     * @param resultCode
-     * @param data
-     */
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-
-        switch (requestCode){
-            case ENABLE_BLUETOOTH_CODE:
-                //Bluetooth request accepted?
-                if (resultCode == RESULT_OK) {
-                    bluetoothIsEnabled();
-                }
-                else
-                {
-
-                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                    builder.setTitle("Permission required");
-                    builder.setMessage("You need to give permissions for bluetooth to used");
-                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-                            BluetoothPermission();
-                        }
-                    });
-
-                    builder.setNegativeButton("Exit", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-                            Log.i("App", "Exiting program");
-                            System.exit(0);
-                        }
-                    });
-
-                    builder.create();
-                    AlertDialog dialog = builder.show();
-
-                }
-                break;
-            case ALLOW_BLUETOOTH_CODE:
-                if (resultCode == RESULT_OK) {
-                    FindNewDevices();
-                } else {
-                    //bluetooth off
-                    Toast.makeText(getApplicationContext(), "Bluetooth access permission denied", Toast.LENGTH_SHORT).show();
-                }
-                break;
-            default:
-                break;
-        }
-    }
+    //----
 
 
-    //When connection to the device has been enstablished:
+
+    //When connection to the device has been established:
+
     /**
      * @class   AcceptThread     receive Bluetooth connections from other devices.
      */
@@ -556,7 +403,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
             BluetoothServerSocket tmp = null;
             try
             {
-                tmp = mBluetoothAdapter.listenUsingRfcommWithServiceRecord(NAME, MY_UUID);
+                tmp = BluetoothController.mBluetoothAdapter.listenUsingRfcommWithServiceRecord(NAME, MY_UUID);
             }
             catch (IOException ex) {
 
@@ -622,7 +469,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         public void run()
         {
             // Cancel discovery because it otherwise slows down the connection.
-            mBluetoothAdapter.cancelDiscovery();
+            BluetoothController.mBluetoothAdapter.cancelDiscovery();
 
             try {
                 // Connect to the remote device through the socket. This call blocks
@@ -760,4 +607,13 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         }
     }
 
+
+    /**
+     * When app is closed, remove registers
+     */
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(mReceiver);
+    }
 }

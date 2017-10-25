@@ -24,7 +24,7 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
 
 
     public interface DeviceListener {
-        void selectDevice(BluetoothDevice selectedDevice, MainActivity.DeviceAction action);
+        void selectDevice(BluetoothDevice selectedDevice, bluetoothController.DeviceAction action);
     }
 
 
@@ -98,18 +98,18 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
 
                     BluetoothDevice selectedDevice = deviceArrayMap.valueAt(getAdapterPosition());
                     boolean continueActions = true;
-                    MainActivity.DeviceAction action = null;
+                    bluetoothController.DeviceAction action = null;
 
 
                     switch (selectedDevice.getBondState()){
                         case BluetoothDevice.BOND_BONDED:
-                            action = MainActivity.DeviceAction.unBond;
+                            action = bluetoothController.DeviceAction.unBond;
                             break;
                         case BluetoothDevice.BOND_BONDING:
                             continueActions = false;
                             break;
                         case BluetoothDevice.BOND_NONE:
-                            action = MainActivity.DeviceAction.Bond;
+                            action = bluetoothController.DeviceAction.Bond;
                             break;
                     }
 

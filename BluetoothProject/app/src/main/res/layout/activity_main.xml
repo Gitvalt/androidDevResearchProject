@@ -75,6 +75,7 @@
         app:backgroundTint="@color/colorPrimary"
         app:fabSize="normal"
         android:onClick=""
+        android:tooltipText="Refresh found devices"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/ListContainer"
