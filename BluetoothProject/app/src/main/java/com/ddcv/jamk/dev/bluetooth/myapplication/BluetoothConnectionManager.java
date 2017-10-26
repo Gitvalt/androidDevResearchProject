@@ -32,19 +32,28 @@ import java.util.UUID;
 
 public class BluetoothConnectionManager {
 
-    private Context mParent;
+    /**
+     * @member  Context             mContext             Context of parent Activity
+     * @member  Activity            mActivity           Parent Activity
+     * @member  BroadcastReceiver   mReceiver           BroadcastReceiver listens for changes is bluetooth connection and found devices. (Connections such as scanning, pairing)
+     * @member  foundDevices        foundDevices        List of found BluetoothDevices
+     * @member  BluetoothAdapter    mBluetoothAdapter   Adapter that handles current bluetooth connections
+     * @member  int                 mScanningTimeout    How many second until stopping discover devices
+     */
+    private Context mContext;
     private Activity mActivity;
-
     private BroadcastReceiver mReceiver;
-
     public ArrayMap<String, BluetoothDevice> foundDevices;
     public BluetoothAdapter mBluetoothAdapter;
+    private static final int mScanningTimeout = 20; //As in 20 seconds
 
     //possible actions for bluetooth
     public enum DeviceAction {
         Bond,
         unBond
     }
+
+
 
     /**
      * @desc                    Class constructor
@@ -53,7 +62,7 @@ public class BluetoothConnectionManager {
      * @param receiver          Receiver that listens for broadcasts
      */
     public BluetoothConnectionManager(Context parent, Activity parent_activity, BroadcastReceiver receiver) {
-        mParent = parent;
+        mContext = parent;
         mReceiver = receiver;
         mActivity = parent_activity;
 
@@ -65,6 +74,42 @@ public class BluetoothConnectionManager {
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
     }
 
+    /**
+     * turn bluetooth on
+     */
+    public void setBluetoothEnabled(boolean setState){
+
+
+        if(setState)
+        {
+            //if bluetooth is wanted to be activated
+            if (mBluetoothAdapter.isEnabled()) {
+                //if bluetooth is already enabled
+                Log.i("Bluetooth", "Bluetooth is already on!");
+            }
+            else
+            {
+                //Not on --> ask to be turned on --> get result in onActivityResult
+                Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                mActivity.startActivityForResult(enableBluetooth, MainActivity.ENABLE_BLUETOOTH_CODE);
+                //A request to turn on bluetooth is sent --> MainActivity onActivityResult
+            }
+        }
+        else
+        {
+            //if bluetooth is wanted to be shut down
+            if (mBluetoothAdapter.isEnabled()) {
+                //Bluetooth is on --> shutdown
+                mBluetoothAdapter.disable();
+                mContext.unregisterReceiver(mReceiver);
+            }
+            else
+            {
+                //if bluetooth is already enabled
+                Log.i("Bluetooth", "Bluetooth is already off!");
+            }
+        }
+    }
 
     /**
      * Make this phone discoverable for by other devices
@@ -74,18 +119,16 @@ public class BluetoothConnectionManager {
         //Discover me
         Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
         discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION,0);
-
-        mParent.startActivity(discoverableIntent);
-
+        mContext.startActivity(discoverableIntent);
     }
 
     /**
-     * set app to register thrown bluetooth broadcasts and then move to finding devices
+     * set app to register thrown bluetooth broadcasts. After completion move to finding devices
      */
     public void registerBluetoothService(){
         //we set the app to listen for bluetooth broadcast's "ACTION_FOUND" = bluetooth device was detected and "ACTION_BOND_STATE_CHANGED" = "Pairing with device has changed"
-        mParent.registerReceiver(mReceiver, new IntentFilter(BluetoothDevice.ACTION_FOUND));
-        mParent.registerReceiver(mReceiver, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
+        mContext.registerReceiver(mReceiver, new IntentFilter(BluetoothDevice.ACTION_FOUND));
+        mContext.registerReceiver(mReceiver, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
     }
 
     /**
@@ -124,14 +167,17 @@ public class BluetoothConnectionManager {
         return pairedDevices;
     }
 
-
+    /**
+     * Check if current devices has given permission for the app use bluetooth
+     * @return  (true or false)
+     */
     private boolean FindNewDevices_permissions(){
         //check if app has permission to use Bluetooth (X >= Android 6.0)
-        int selfPermission = PermissionChecker.checkSelfPermission(mParent.getApplicationContext(), Manifest.permission.BLUETOOTH);
-        int adminPermission = PermissionChecker.checkSelfPermission(mParent.getApplicationContext(), Manifest.permission.BLUETOOTH_ADMIN);
+        int selfPermission = PermissionChecker.checkSelfPermission(mContext.getApplicationContext(), Manifest.permission.BLUETOOTH);
+        int adminPermission = PermissionChecker.checkSelfPermission(mContext.getApplicationContext(), Manifest.permission.BLUETOOTH_ADMIN);
 
-        int fineLocation = PermissionChecker.checkSelfPermission(mParent.getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION);
-        int coarseLocation = PermissionChecker.checkSelfPermission(mParent.getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION);
+        int fineLocation = PermissionChecker.checkSelfPermission(mContext.getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION);
+        int coarseLocation = PermissionChecker.checkSelfPermission(mContext.getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION);
 
         int granted = PermissionChecker.PERMISSION_GRANTED;
 
@@ -143,7 +189,8 @@ public class BluetoothConnectionManager {
             /**
              * Show alert dialog informing what permissions are required for this app to work
              */
-            AlertDialog.Builder alert = new AlertDialog.Builder(mParent);
+
+            AlertDialog.Builder alert = new AlertDialog.Builder(mActivity.getWindow().getContext());
             alert.setTitle("Permissions have not been granted");
             alert.setMessage("Permissions for coarse/fine location and Bluetooth are required");
             alert.setCancelable(false);
@@ -171,8 +218,8 @@ public class BluetoothConnectionManager {
                 }
             });
 
-            AlertDialog dialog = alert.create();
-            dialog.show();
+            alert.show();
+
             return false;
         }
         else {
@@ -214,8 +261,8 @@ public class BluetoothConnectionManager {
                 //start looking for devices
                 mBluetoothAdapter.startDiscovery();
 
-                //close search after {10 s} time
-                long time = 10 * 1000;
+                //close search after {mScanningTimeout} time (in seconds)
+                long time = mScanningTimeout * 1000;
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -233,6 +280,8 @@ public class BluetoothConnectionManager {
             Log.i("Bluetooth", "Permissions have not been given");
         }
     }
+
+
 
 
     //When connection to the device has been established:

@@ -27,19 +27,17 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
         void selectDevice(BluetoothDevice selectedDevice, BluetoothConnectionManager.DeviceAction action);
     }
 
-
-
-    @Override
-    public void onAttachedToRecyclerView(RecyclerView recyclerView)
-    {
-
-    }
-
     //Constructor
     public DeviceAdapter(ArrayMap<String, BluetoothDevice> devList, DeviceListener deviceListener)
     {
         deviceArrayMap = devList;
         this.callback = deviceListener;
+    }
+
+    @Override
+    public void onAttachedToRecyclerView(RecyclerView recyclerView)
+    {
+
     }
 
     @Override

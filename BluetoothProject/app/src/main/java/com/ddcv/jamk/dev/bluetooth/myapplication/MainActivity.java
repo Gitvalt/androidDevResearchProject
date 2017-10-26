@@ -3,6 +3,7 @@ package com.ddcv.jamk.dev.bluetooth.myapplication;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
@@ -36,12 +37,11 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
      * @member  RecyclerView.Adapter        Manages devices shown in the list
      * @member  RecyclerView.LayoutManager  Manager the overlay of the list
      *
+     * @member  BluetoothConnectionManager  Class that handles bluetooth connections and found bluetooth devices
+     *
      * @member  ENABLE_BLUETOOTH_CODE       Tag for permissions
      * @member  ALLOW_BLUETOOTH_CODE        Tag for permissions
      *
-     * @member  foundDevices                Array of found BluetoothDevices
-     *
-     * @member  mBluetoothAdapter           Adapter that handles phones bluetooth connection
      */
 
     private ProgressBar spinningCircle;
@@ -75,6 +75,8 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         BluetoothController = new BluetoothConnectionManager(getApplicationContext(), this, mReceiver);
 
         deviceList.setLayoutManager(layoutManager);
+        DeviceAdapter deviceListAdapter = new DeviceAdapter(BluetoothController.foundDevices, this);
+        deviceList.setAdapter(deviceListAdapter);
 
         //check if phone supports bluetooth communication
         if (BluetoothController.mBluetoothAdapter == null)
@@ -102,7 +104,20 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         {
             //bluetooth is supported
             Log.i("Bluetooth", "Bluetooth is implemented!");
-            BluetoothPermission();
+            boolean isEnabled = BluetoothController.mBluetoothAdapter.isEnabled();
+
+            /**
+             * is bluetooth on?
+             * if yes, then we register what we want to listen and start looking for devices
+             * if no, then ask to enable from user and wait for onActivityResult
+             */
+            if(isEnabled){
+                BluetoothController.registerBluetoothService();
+                lookForDevices();
+            } else {
+                BluetoothController.setBluetoothEnabled(true);
+                Log.i("Bluetooth_status", "Bluetooth is not Enabled");
+            }
         }
 
 
@@ -110,31 +125,17 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
     }
 
     /**
-     * Check if bluetooth has been activated in the device
-     * if permission is allowed
+     * Clear current list and start looking for new bluetooth devices
      */
-    private void BluetoothPermission(){
-
-        //is bluetooth on?
-        if (!BluetoothController.mBluetoothAdapter.isEnabled()) {
-            //Not on --> ask to be turned on --> get result in onActivityResult
-            Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBluetooth, ENABLE_BLUETOOTH_CODE);
-        }
-        else
-        {
-            //bluetooth is on, move to registering service
-            BluetoothController.registerBluetoothService();
-            lookForDevices();
-        }
-    }
-
     private void lookForDevices(){
 
         ArrayMap<String, BluetoothDevice> foundDevices = BluetoothController.foundDevices;
 
+        boolean isListEmpty = foundDevices.isEmpty();
+
         //Empty list
-        if(foundDevices.isEmpty() != true){
+        if(!isListEmpty)
+        {
             foundDevices.clear();
             deviceList.getAdapter().notifyDataSetChanged();
         }
@@ -142,6 +143,8 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         BluetoothController.FindNewDevices();
         //program continues in BroadcastReceiver.ActionDiscovery finished
     }
+
+    //onClick functions:
 
     /**
      * Clear list, search new devices
@@ -175,15 +178,18 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
 
             switch (action){
                 case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
+                    Log.i("Bluetooth_broadcast", "staring discovery...");
                     spinningCircle.setVisibility(View.VISIBLE);
                     break;
                 case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
+                    Log.i("Bluetooth_broadcast", "discovery fisihed");
                     spinningCircle.setVisibility(View.INVISIBLE);
                     break;
                 case BluetoothDevice.ACTION_FOUND:
                     //bluetooth device is found.
 
                     BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                    BluetoothClass deviceClass = intent.getParcelableExtra(BluetoothDevice.EXTRA_CLASS);
 
                     BluetoothController.foundDevices.put(device.getAddress(), device);
 
@@ -263,7 +269,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
                     builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
-                            BluetoothPermission();
+                            BluetoothController.setBluetoothEnabled(true);
                         }
                     });
 
@@ -348,7 +354,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
     private void updateDeviceList(){
 
 
-        deviceList.setAdapter(mAdapter);
+        //deviceList.setAdapter(mAdapter);
         ArrayMap<String, BluetoothDevice> foundDevices = BluetoothController.foundDevices;
 
 
@@ -364,14 +370,10 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         }
         else
         {
-            if(deviceList.getAdapter() == null) {
-                DeviceAdapter deviceListAdapter = new DeviceAdapter(foundDevices, this);
-                deviceList.setAdapter(deviceListAdapter);
-            }
-            else
-            {
-                deviceList.getAdapter().notifyDataSetChanged();
-            }
+            Log.i("Bluetooth", "Notifying data has changed.");
+            //refresh layout. Without refresh recyclerview will keep strange unnaturally long padding.
+            deviceList.setLayoutManager(layoutManager);
+            deviceList.getAdapter().notifyDataSetChanged();
         }
     }
 
