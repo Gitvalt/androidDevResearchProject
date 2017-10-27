@@ -78,21 +78,23 @@ def findDevices():
 		print error
 
 # Listen to incoming messages from bluetooth device on port x
-def listenToPort(x):
+def listenToPort(port_x, backlog):
     server_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-    port = x
+    port = port_x
 
     server_socket.bind(("", port))
-    server_socket.listen(port)
+    server_socket.listen(backlog)
     
-    client_sock,address = server_sock.accept()
-    print "Accepted connection from ",address
-
-    data = client_sock.recv(1024)
-    print "received [%s]" % data
-
-    client_sock.close()
-    server_sock.close()
+	try:
+		client_sock,address = server_sock.accept()
+		while(1):
+			data = client_sock.recv(1024)
+			if data:
+				print(data)
+	except:
+		print "closing..."
+		client_sock.close()
+		server_sock.close()
    
 # Send information to the found device
 def sendToDevice(deviceMAC):
