@@ -34,7 +34,7 @@ def isDeviceAvailable(targetMAC):
 		nearby_devices = bluetooth.discover_devices()
 		
 		for address in nearby_devices:
-			
+			print address + ":" + "targetMAC"
 			if address is targetMAC:
 				writeLog("Address found: " + address)
 				print "target found"
