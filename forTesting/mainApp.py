@@ -31,6 +31,7 @@ def findDevice(x):
 		
 		for address in nearby_devices:
 			print address
+			writeLog("Address found: " + address)
 			
 	except IOError as error:
 		print "Error in discovering devices"
@@ -74,7 +75,6 @@ def sendToDevice(deviceMAC):
 
 print "Program is now starting"
 
-#clearLog()
-#writeLog("Open app")
+writeLog("Looking for devices")
 findDevice("cat")
 waitClose = raw_input()
