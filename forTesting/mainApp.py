@@ -121,7 +121,7 @@ arg = isDeviceAvailable('C0:EE:FB:26:EB:BC')
 
 if arg is True:
 	print "Device is available"
-else if arg is None:
+elif arg is None:
 	print "Someting went wrong!"
 else:
 	print "Device is not available"
