@@ -41,14 +41,14 @@ def isDeviceAvailable(targetMAC):
 				return True
 			
 		else:
-			print "No devices found!"
-			writeLog("No devices were found")
+			print "Reading found devices completed!"
+			writeLog("MAC devices was not found")
 			return False
 			
 	except IOError as error:
 		print "Error in finding the device:"
 		print error
-		return False
+		return None
 
 #Use bluetooth to find any available bluetooth devices
 def findDevices():
@@ -56,13 +56,20 @@ def findDevices():
 	
 	try:
 		nearby_devices = bluetooth.discover_devices()
-		
+		i = 0
 		for address in nearby_devices:
 			print "Device found: " + address
 			writeLog("Address found: " + address)
+			i++
 		else:
-			print "No devices were found"
-			return None
+			print "Reading has been completed"
+			
+			if i > 0:
+				print "Devices were found! Count: " + i
+				return nearby_devices
+			else:
+				print "No devices were found"
+				return None
 		
 		return nearby_devices
 			
@@ -114,6 +121,8 @@ arg = isDeviceAvailable('C0:EE:FB:26:EB:BC')
 
 if arg is True:
 	print "Device is available"
+else if arg is None:
+	print "Someting went wrong!"
 else:
 	print "Device is not available"
 
