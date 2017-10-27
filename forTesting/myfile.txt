@@ -1,5 +1,2 @@
-moi!
-moi!
-moi!
-moi!
-test
+New log created on: 'Fri Oct 27 03:15:27 2017'
+Action: 'Open app' on Fri Oct 27 03:15:27 2017

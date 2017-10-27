@@ -2,17 +2,15 @@
 import bluetooth
 import time
 
-
-print("hello!")
-
-writeLog()
-findDevice(None)
-waitClose = raw_input()
-
+def getLocalTime():
+	return time.asctime(time.localtime(time.time()))
 
 def writeLog(msg):
-	file = open("myfile.txt", 'a')
-	file.write(msg + "\n")
+    if msg is None:
+        print 'Message to log cannot be empty'
+    else:
+        file = open("myfile.txt", 'a')
+        file.write("Action: '" +  msg + "' on " + getLocalTime() + "\n")
 
     
 def readLog():
@@ -20,18 +18,25 @@ def readLog():
 	print readfile.read()
 	readfile.close()
 	
+def clearLog():
+	file = open("myfile.txt", 'w')
+	file.write("New log created on: '" + getLocalTime() + "'\n")
 
 def findDevice(x):
     target_name = x
     target_address = None
 
-    nearby_devices = bluetooth.discover_devices()
-    
+    try:
+       nearby_devices = bluetooth.discover_devices()
+    except IOError:
+        print "Error in discovering devices"
+
+
     for address in nearby_devices:
         if target_name == bluetooth.lookup_name(address):
             target_address = address
             break
-
+        
     if target_address is not None:
         print "Got something: " + target_address
     else:
@@ -76,3 +81,10 @@ def sendToDevice(deviceMAC):
         sock.close()
         return
 
+print("hello!")
+
+clearLog()
+writeLog("Open app")
+
+findDevice("cat")
+waitClose = raw_input()
