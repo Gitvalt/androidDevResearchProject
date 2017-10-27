@@ -1,44 +1,26 @@
 # bluetooth is from PyBluez module
-#import bluetooth
-#import time
+import bluetooth
+import time
+
+
+print("hello!")
+
+writeLog()
+findDevice(None)
+waitClose = raw_input()
+
 
 def writeLog(msg):
-    file = open("myfile.txt", 'a')
-	file.write("test" + "\n")
+	file = open("myfile.txt", 'a')
+	file.write(msg + "\n")
 
     
 def readLog():
-    readfile = open("myfile.txt", "r")
-    print readfile.read()
-    readfile.close()
-    return
+	readfile = open("myfile.txt", "r")
+	print readfile.read()
+	readfile.close()
+	
 
-print("hello!")
-input = raw_input("Enter something: ")
-print "got: " + input    
-
-writeLog()
-
-    
-#readLog()
-#writeLog("haammsterriiii")
-#writeLog("haammsterriiii")
-#writeLog("haammsterriiii")
-
-
-
-
-waitClose = raw_input()
-
-"""
-print "start find devices function"
-try:
-    #found_addresses = findDevice("Phone")
-except IOError:
-    print "We got a error " + error 
-"""
-
-"""
 def findDevice(x):
     target_name = x
     target_address = None
@@ -93,5 +75,4 @@ def sendToDevice(deviceMAC):
 
         sock.close()
         return
-"""
 
