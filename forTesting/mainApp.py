@@ -11,7 +11,6 @@ def writeLog(msg):
     else:
         file = open("myfile.txt", 'a')
         file.write("Action: '" +  msg + "' on " + getLocalTime() + "\n")
-
     
 def readLog():
 	readfile = open("myfile.txt", "r")
@@ -23,26 +22,26 @@ def clearLog():
 	file.write("New log created on: '" + getLocalTime() + "'\n")
 
 def findDevice(x):
-    target_name = x
-    target_address = None
+	print "Looking for devices"
+	target_name = x
+	target_address = None
 
-    try:
-       nearby_devices = bluetooth.discover_devices()
-    except IOError:
-        print "Error in discovering devices"
+	try:
+		nearby_devices = bluetooth.discover_devices()
+		
+		for address in nearby_devices:
+			if target_name == bluetooth.lookup_name(address):
+				target_address = address
+				break
+				
+			if target_address is not None:
+				print "Got something: " + target_address
+			else:
+				print "Could not find device"
 
-
-    for address in nearby_devices:
-        if target_name == bluetooth.lookup_name(address):
-            target_address = address
-            break
-        
-    if target_address is not None:
-        print "Got something: " + target_address
-    else:
-        print "Could not find device"
-    
-    return target_address
+	except IOError as error:
+		print "Error in discovering devices"
+		print error
 
 # Listen to incoming messages from bluetooth device on port x
 def listenToPort(x):
@@ -60,8 +59,7 @@ def listenToPort(x):
 
     client_sock.close()
     server_sock.close()
-
-    
+   
 # Send information to the found device
 def sendToDevice(deviceMAC):
     
@@ -81,10 +79,9 @@ def sendToDevice(deviceMAC):
         sock.close()
         return
 
-print("hello!")
+print "Program is now starting"
 
-clearLog()
-writeLog("Open app")
-
+#clearLog()
+#writeLog("Open app")
 findDevice("cat")
 waitClose = raw_input()
