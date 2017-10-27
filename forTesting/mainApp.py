@@ -127,5 +127,5 @@ elif arg is None:
 else:
 	print "Device is not available"
 
-
+writeLog("Program has ended")
 waitClose = raw_input()
