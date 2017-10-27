@@ -65,7 +65,7 @@ def findDevices():
 			print "Reading has been completed"
 			
 			if i > 0:
-				print "Devices were found! Count: " + i
+				print "Devices were found! Count: " + str(i)
 				return nearby_devices
 			else:
 				print "No devices were found"
@@ -83,7 +83,7 @@ def listenToPort(x):
     port = x
 
     server_socket.bind(("", port))
-    server_socket.listen(1)
+    server_socket.listen(port)
     
     client_sock,address = server_sock.accept()
     print "Accepted connection from ",address
@@ -121,6 +121,7 @@ arg = isDeviceAvailable('C0:EE:FB:26:EB:BC')
 
 if arg is True:
 	print "Device is available"
+	listenToPort(1)
 elif arg is None:
 	print "Someting went wrong!"
 else:
