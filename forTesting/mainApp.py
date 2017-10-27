@@ -58,7 +58,7 @@ def findDevices():
 		nearby_devices = bluetooth.discover_devices()
 		
 		for address in nearby_devices:
-			print address
+			print "Device found: " + address
 			writeLog("Address found: " + address)
 		else:
 			print "No devices were found"
