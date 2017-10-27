@@ -21,9 +21,9 @@ def clearLog():
 	file = open("myfile.txt", 'w')
 	file.write("New log created on: '" + getLocalTime() + "'\n")
 
-def findDevice(x):
-	print "Looking for devices"
-	target_name = x
+def connectToDevice(targetMAC):
+	print "Looking for the device"
+	target_name = targetMAC
 	target_address = None
 
 	try:
@@ -32,6 +32,27 @@ def findDevice(x):
 		for address in nearby_devices:
 			print address
 			writeLog("Address found: " + address)
+			
+			
+	except IOError as error:
+		print "Error in discovering devices"
+		print error
+
+	
+def findDevices():
+	print "Looking for devices"
+	
+	try:
+		nearby_devices = bluetooth.discover_devices()
+		
+		for address in nearby_devices:
+			print address
+			writeLog("Address found: " + address)
+		else:
+			print "No devices were found"
+			return None
+		
+		return nearby_devices
 			
 	except IOError as error:
 		print "Error in discovering devices"
@@ -76,5 +97,5 @@ def sendToDevice(deviceMAC):
 print "Program is now starting"
 
 writeLog("Looking for devices")
-findDevice("cat")
+findDevices()
 waitClose = raw_input()
