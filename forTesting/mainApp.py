@@ -60,7 +60,7 @@ def findDevices():
 		for address in nearby_devices:
 			print "Device found: " + address
 			writeLog("Address found: " + address)
-			i++
+			i = i + 1
 		else:
 			print "Reading has been completed"
 			
