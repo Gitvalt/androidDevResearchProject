@@ -1,44 +1,56 @@
-# bluetooth is from PyBluez module
+# bluetooth is from opensource PyBluez module
 import bluetooth
 import time
+
+#this is a python application for testing bluetooth based applications
 
 def getLocalTime():
 	return time.asctime(time.localtime(time.time()))
 
+#Write information to a log
 def writeLog(msg):
     if msg is None:
         print 'Message to log cannot be empty'
     else:
         file = open("myfile.txt", 'a')
         file.write("Action: '" +  msg + "' on " + getLocalTime() + "\n")
-    
+
+#Read content of the log
 def readLog():
 	readfile = open("myfile.txt", "r")
 	print readfile.read()
 	readfile.close()
 	
+#Empty the log
 def clearLog():
 	file = open("myfile.txt", 'w')
 	file.write("New log created on: '" + getLocalTime() + "'\n")
 
-def connectToDevice(targetMAC):
-	print "Looking for the device"
-	target_name = targetMAC
-	target_address = None
-
+#is selected device available for connection?
+def isDeviceAvailable(targetMAC):
+	print "Looking for the device: " + targetMAC
+	
 	try:
 		nearby_devices = bluetooth.discover_devices()
 		
 		for address in nearby_devices:
-			print address
-			writeLog("Address found: " + address)
 			
+			if address is targetMAC:
+				writeLog("Address found: " + address)
+				print "target found"
+				return True
+			
+		else:
+			print "No devices found!"
+			writeLog("No devices were found")
+			return False
 			
 	except IOError as error:
-		print "Error in discovering devices"
+		print "Error in finding the device:"
 		print error
+		return False
 
-	
+#Use bluetooth to find any available bluetooth devices
 def findDevices():
 	print "Looking for devices"
 	
@@ -98,4 +110,12 @@ print "Program is now starting"
 
 writeLog("Looking for devices")
 findDevices()
+arg = isDeviceAvailable('C0:EE:FB:26:EB:BC')
+
+if arg is True:
+	print "Device is available"
+else:
+	print "Device is not available"
+
+
 waitClose = raw_input()
