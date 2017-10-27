@@ -30,15 +30,8 @@ def findDevice(x):
 		nearby_devices = bluetooth.discover_devices()
 		
 		for address in nearby_devices:
-			if target_name == bluetooth.lookup_name(address):
-				target_address = address
-				break
-				
-			if target_address is not None:
-				print "Got something: " + target_address
-			else:
-				print "Could not find device"
-
+			print address
+			
 	except IOError as error:
 		print "Error in discovering devices"
 		print error
