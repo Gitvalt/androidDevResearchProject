@@ -128,4 +128,4 @@ else:
 	print "Device is not available"
 
 writeLog("Program has ended")
-waitClose = raw_input()
+waitClose = raw_input("Write something!")
