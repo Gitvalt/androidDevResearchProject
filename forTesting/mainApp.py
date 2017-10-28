@@ -20,7 +20,7 @@ def readLog():
 	readfile = open("myfile.txt", "r")
 	print readfile.read()
 	readfile.close()
-	
+
 #Empty the log
 def clearLog():
 	file = open("myfile.txt", 'w')
@@ -29,22 +29,24 @@ def clearLog():
 #is selected device available for connection?
 def isDeviceAvailable(targetMAC):
 	print "Looking for the device: " + targetMAC
-	
+
 	try:
 		nearby_devices = bluetooth.discover_devices()
-		
+
 		for address in nearby_devices:
-			print address + ":" + "targetMAC"
-			if address is targetMAC:
+			print address + "||" + targetMAC
+			if str(address) == str(targetMAC):
 				writeLog("Address found: " + address)
 				print "target found"
 				return True
-			
+			else:
+				print "this is not a match! " + address
+
 		else:
 			print "Reading found devices completed!"
 			writeLog("MAC devices was not found")
 			return False
-			
+
 	except IOError as error:
 		print "Error in finding the device:"
 		print error
@@ -53,7 +55,7 @@ def isDeviceAvailable(targetMAC):
 #Use bluetooth to find any available bluetooth devices
 def findDevices():
 	print "Looking for devices"
-	
+
 	try:
 		nearby_devices = bluetooth.discover_devices()
 		i = 0
@@ -63,16 +65,16 @@ def findDevices():
 			i = i + 1
 		else:
 			print "Reading has been completed"
-			
+
 			if i > 0:
 				print "Devices were found! Count: " + str(i)
 				return nearby_devices
 			else:
 				print "No devices were found"
 				return None
-		
+
 		return nearby_devices
-			
+
 	except IOError as error:
 		print "Error in discovering devices"
 		print error
@@ -83,8 +85,8 @@ def listenToPort(x):
     port = x
 
     server_socket.bind(("", port))
-    server_socket.listen(port)
-    
+    server_socket.listen(1)
+
     client_sock,address = server_sock.accept()
     print "Accepted connection from ",address
 
@@ -93,13 +95,13 @@ def listenToPort(x):
 
     client_sock.close()
     server_sock.close()
-   
+
 # Send information to the found device
 def sendToDevice(deviceMAC):
-    
+
     if deviceMAC is None:
         return
-    
+
     else:
         bd_addr = deviceMAC
 
@@ -121,7 +123,7 @@ arg = isDeviceAvailable('C0:EE:FB:26:EB:BC')
 
 if arg is True:
 	print "Device is available"
-	listenToPort(1)
+	listenToPort(2)
 elif arg is None:
 	print "Someting went wrong!"
 else:
