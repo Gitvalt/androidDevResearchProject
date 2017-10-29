@@ -21,6 +21,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+import com.ddcv.jamk.dev.bluetooth.myapplication.BluetoothConnectionManager;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -150,8 +151,10 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
      * Clear list, search new devices
      */
     public void onRefreshListClick(View parent){
+        /*
         Log.i("Bluetooth", "Finding new devices");
         BluetoothController.FindNewDevices();
+        */
     }
 
     public void onExitClick(View parent){
@@ -343,6 +346,15 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
                 {
                     Log.e("Bluetooth error", "Removing bond failed");
                 }
+                break;
+            case connect:
+                //BluetoothController.getMessages(selectedDevice);
+                BluetoothController.sendMessage("Hello server!", selectedDevice);
+                break;
+
+            //sends a message to the bluetooth device
+            case message:
+                BluetoothController.sendMessage("Hello server!", selectedDevice);
                 break;
         }
 

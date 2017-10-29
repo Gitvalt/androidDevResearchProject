@@ -101,7 +101,7 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
 
                     switch (selectedDevice.getBondState()){
                         case BluetoothDevice.BOND_BONDED:
-                            action = BluetoothConnectionManager.DeviceAction.unBond;
+                            action = BluetoothConnectionManager.DeviceAction.connect;
                             break;
                         case BluetoothDevice.BOND_BONDING:
                             continueActions = false;

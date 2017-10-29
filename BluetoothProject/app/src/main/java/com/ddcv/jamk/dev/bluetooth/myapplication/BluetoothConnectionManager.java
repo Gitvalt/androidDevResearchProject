@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
@@ -12,6 +13,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
 import android.support.v4.app.ActivityCompat;
@@ -39,6 +41,7 @@ public class BluetoothConnectionManager {
      * @member  foundDevices        foundDevices        List of found BluetoothDevices
      * @member  BluetoothAdapter    mBluetoothAdapter   Adapter that handles current bluetooth connections
      * @member  int                 mScanningTimeout    How many second until stopping discover devices
+     * @member  UUID                myUID               This client - server application indentification id (client detects a server with bluetooth service label with same ID)
      */
     private Context mContext;
     private Activity mActivity;
@@ -46,11 +49,15 @@ public class BluetoothConnectionManager {
     public ArrayMap<String, BluetoothDevice> foundDevices;
     public BluetoothAdapter mBluetoothAdapter;
     private static final int mScanningTimeout = 20; //As in 20 seconds
+    private final UUID myUID = UUID.fromString("94f39d29-7d6d-437d-973b-fba39e49d4ee");
 
     //possible actions for bluetooth
     public enum DeviceAction {
         Bond,
-        unBond
+        unBond,
+        connect,
+        message,
+        disconnect
     }
 
 
@@ -281,21 +288,145 @@ public class BluetoothConnectionManager {
         }
     }
 
+    /**
+     * 1. create "BluetoothClien"-thread socket to the SelectedDevice
+     * 2. send message to device
+     *
+     * @param message
+     * @param mDevice
+     */
+    public void sendMessage(String message, BluetoothDevice mDevice){
+        //create the socket for communication
+        BluetoothClient thread = new BluetoothClient(mDevice);
 
+        //start connecting
+        thread.start();
+
+        thread.run();
+
+        //for testing
+        BluetoothSocket socket = thread.getSocket();
+
+
+        if(!thread.mSocket.isConnected())
+        {
+            Log.e("Bluetooth", "Socket connection that should be open, is not open!");
+            sendMessage(message, mDevice);
+            return;
+        }
+        else
+        {
+            BluetoothClient_Write thread1 = new BluetoothClient_Write(thread.mSocket);
+            thread1.start();
+
+            byte[] values = message.getBytes();
+            thread1.write(values);
+            thread1.cancel();
+        }
+
+        //closing threads
+        thread.cancel();
+
+    }
+
+    public void getMessages(BluetoothDevice device){
+        BluetoothClient_Listen listenThread = new BluetoothClient_Listen();
+        listenThread.run();
+    }
 
 
     //When connection to the device has been established:
 
     /**
-     * @class   AcceptThread     receive Bluetooth connections from other devices.
+     * @class   BluetoothClient     Connect as a client to bluetooth device
      */
-    public class AcceptThread extends Thread {
+    public class BluetoothClient extends Thread {
+
+        /**
+         * @member  mSocket     Socket that is used to communicate with the device
+         * @member  mDevice     Device that is to be communicated with
+         */
+        private final BluetoothSocket mSocket;
+        private final BluetoothDevice mDevice;
+
+        //Constructor
+        public BluetoothClient(BluetoothDevice device)
+        {
+            BluetoothSocket tmp = null;
+            try
+            {
+                tmp = device.createRfcommSocketToServiceRecord(myUID);
+            }
+            catch (Exception e){
+                Log.e("BLUETOOTH_CONNECTION", "Creating socket has failed: " + e.getMessage());
+            }
+
+            //set the thread members
+            mSocket = tmp;
+            mDevice = device;
+        }
+
+        /**
+         * get the bluetooth socket
+         * @return  BluetoothSocket Socket that is used for communication
+         */
+        public BluetoothSocket getSocket(){
+            return mSocket;
+        }
+
+        /**
+         * Create a connection to the device
+         */
+        public void run()
+        {
+            // Cancel discovery because it otherwise slows down the connection.
+            //mBluetoothAdapter.cancelDiscovery();
+
+            try {
+                //try to connect to socket until connection is created
+                while(!mSocket.isConnected()){
+                    mSocket.connect();
+                }
+
+            }
+            catch (IOException connectException)
+            {
+                Log.e("BluetoothClient", "Error in connecting to Socket: " + connectException.getMessage());
+                return;
+            }
+
+            // The connection attempt succeeded. Perform work associated with
+            // the connection in a separate thread.
+            String item = "success!";
+            return;
+        }
+
+        /**
+         * Destroy the connection
+         */
+        public void cancel()
+        {
+            try
+            {
+                mSocket.close();
+            }
+            catch (IOException e)
+            {
+                Log.e("BluetoothClient", "Could not close the client socket", e);
+            }
+        }
+    }
+
+    /**
+     * @class   BluetoothClient_Listen     receive Bluetooth communication from other devices (act as a server)
+     */
+    public class BluetoothClient_Listen extends Thread {
 
         private final BluetoothServerSocket mServerSocket;
-        private static final String NAME = "MAINSERVER";
-        private final UUID MY_UUID = UUID.randomUUID();
+        private static final String NAME = "Android phone client";
+        private final UUID MY_UUID = UUID.fromString("94f39d29-7d6d-437d-973b-fba39e49d4ee");
 
-        public AcceptThread() {
+        public BluetoothClient_Listen() {
 
             BluetoothServerSocket tmp = null;
             try
@@ -303,7 +434,7 @@ public class BluetoothConnectionManager {
                 tmp = mBluetoothAdapter.listenUsingRfcommWithServiceRecord(NAME, MY_UUID);
             }
             catch (IOException ex) {
-
+                Log.e("Bluetooth", ex.getMessage());
             }
             mServerSocket = tmp;
         }
@@ -311,13 +442,15 @@ public class BluetoothConnectionManager {
         @Override
         public void run() {
             BluetoothSocket socket = null;
-
             while(true)
             {
                 try {
+
+
                     socket = mServerSocket.accept();
                     if(socket != null)
                     {
+                        Log.i("Bluetooth", "Communication received!");
                         mServerSocket.close();
                         break;
                     }
@@ -340,68 +473,9 @@ public class BluetoothConnectionManager {
     }
 
     /**
-     * @class   ConnectThread     Connect to other bluetooth devices
+     * @class   BluetoothClient_Write     Manage connection between two devices
      */
-    public class ConnectThread extends Thread {
-
-        private final BluetoothSocket mSocket;
-        private final BluetoothDevice mDevice;
-        private final UUID myUID = UUID.randomUUID();
-
-        public ConnectThread(BluetoothDevice device)
-        {
-            BluetoothSocket tmp = null;
-            mDevice = device;
-
-            try {
-                tmp = device.createRfcommSocketToServiceRecord(myUID);
-            }
-            catch (IOException e){
-                Log.e("BLUETOOTH_CONNECTION", "error in connecting to bluetooth device: " + e.getMessage());
-            }
-
-            mSocket = tmp;
-        }
-
-        public void run()
-        {
-            // Cancel discovery because it otherwise slows down the connection.
-            mBluetoothAdapter.cancelDiscovery();
-
-            try {
-                // Connect to the remote device through the socket. This call blocks
-                // until it succeeds or throws an exception.
-                mSocket.connect();
-            } catch (IOException connectException) {
-                // Unable to connect; close the socket and return.
-                try {
-                    mSocket.close();
-                } catch (IOException closeException) {
-                    Log.e("ERROR", "Could not close the client socket", closeException);
-                }
-                return;
-            }
-
-            // The connection attempt succeeded. Perform work associated with
-            // the connection in a separate thread.
-            String item = "success!";
-
-        }
-
-        public void cancel()
-        {
-            try {
-                mSocket.close();
-            } catch (IOException e) {
-                Log.e("ERROR", "Could not close the client socket", e);
-            }
-        }
-    }
-
-    /**
-     * @class   ConnectedThread     Manage connection between two devices
-     */
-    private class ConnectedThread extends Thread{
+    public class BluetoothClient_Write extends Thread{
 
         /**
          * @member  mSocket         Contains target bluetoothsocket
@@ -410,6 +484,7 @@ public class BluetoothConnectionManager {
          * @member  mBuffer         Temporary variable contains the data
          * @member  mHandler        Handle data reading
          */
+        private final UUID myUID = UUID.fromString("94f39d29-7d6d-437d-973b-fba39e49d4ee");
         private final BluetoothSocket mSocket;
         private final InputStream mInputStream;
         private final OutputStream mOutputStream;
@@ -417,24 +492,35 @@ public class BluetoothConnectionManager {
         private android.os.Handler mHandler;
 
         /**
-         * @function     ConnectThread  Constructor
+         * @function     BluetoothClient  Constructor
          * @param       "socket"        Socket assigned to communicate with specified device
          */
-        public ConnectedThread(BluetoothSocket socket) {
+        public BluetoothClient_Write(BluetoothSocket socket) {
             mSocket = socket;
             InputStream tmpIn = null;
             OutputStream tmpOut = null;
 
             try {
+                if (!mSocket.isConnected()) {
+                    mSocket.connect();
+                }
+            }
+            catch (Exception e){
+                Log.e("error", e.getMessage());
+            }
+
+            try {
                 tmpIn = socket.getInputStream();
-            } catch (IOException error) {
-                Log.e("Bluetooth_connector", "ConnectedThread InputStream failed", error);
+            }
+            catch (IOException error) {
+                Log.e("Bluetooth_connector", "BluetoothClient_Write InputStream failed", error);
             }
 
             try {
                 tmpOut = socket.getOutputStream();
-            } catch (IOException error) {
-                Log.e("Bluetooth_connector", "ConnectedThread OutputStream failed", error);
+            }
+            catch (IOException error) {
+                Log.e("Bluetooth_connector", "BluetoothClient_Write OutputStream failed", error);
             }
 
             mInputStream = tmpIn;
