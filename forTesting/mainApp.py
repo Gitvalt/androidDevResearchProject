@@ -1,7 +1,8 @@
 # bluetooth is from opensource PyBluez module
 import bluetooth
 import time
-
+from uuid import getnode as get_mac
+import sys
 #this is a python application for testing bluetooth based applications
 
 def getLocalTime():
@@ -10,10 +11,10 @@ def getLocalTime():
 #Write information to a log
 def writeLog(msg):
     if msg is None:
-        print 'Message to log cannot be empty'
+        print 'Cannot add a empty string to log file'
     else:
-        file = open("myfile.txt", 'a')
-        file.write("Action: '" +  msg + "' on " + getLocalTime() + "\n")
+		file = open("myfile.txt", 'a')
+		file.write("Action: '{0}' executed at '{1}'\n".format(msg, getLocalTime()))
 
 #Read content of the log
 def readLog():
@@ -24,19 +25,18 @@ def readLog():
 #Empty the log
 def clearLog():
 	file = open("myfile.txt", 'w')
-	file.write("New log created on: '" + getLocalTime() + "'\n")
+	file.write("New log created on: '%s' \n" % getLocalTime())
 
 #is selected device available for connection?
 def isDeviceAvailable(targetMAC):
 	print "Looking for the device: " + targetMAC
-
+	writeLog("Testing if MAC: '%s' is available" % targetMAC)
 	try:
 		nearby_devices = bluetooth.discover_devices()
 
 		for address in nearby_devices:
 			print address + "||" + targetMAC
 			if str(address) == str(targetMAC):
-				writeLog("Address found: " + address)
 				print "target found"
 				return True
 			else:
@@ -81,22 +81,33 @@ def findDevices():
 
 # Listen to incoming messages from bluetooth device on port x
 def listenToPort(port_x, backlog):
-    server_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-    port = port_x
 
-    server_socket.bind(("", port))
-    server_socket.listen(backlog)
+	port = port_x
+	server_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+	server_socket.bind(("", bluetooth.PORT_ANY))
+	server_socket.listen(1)
 
-	try:
-		client_sock,address = server_sock.accept()
-		while(1):
-			data = client_sock.recv(1024)
-			if data:
-				print(data)
-	except:
-		print "closing..."
-		client_sock.close()
-		server_sock.close()
+	port_socket = server_socket.getsockname()[1]
+	print "Found socket: '{0}'".format(port_socket)
+
+	#print current situation
+	printmessage = "Beginning to listen port '{0}' and setting backlog to '{1}'".format(port_socket, backlog)
+	writeLog(printmessage)
+	print printmessage + "\n"
+	sys.stdout.flush() #force to show printed data
+
+	client, client_info = server_socket.accept()
+
+	while True:
+		data = client.recv(1024)
+		print "data received %s" & data
+		sys.stdout.flush() #force to show printed data
+		if raw_input() is not None:
+			False
+
+
+	client.close()
+	server_socket.close()
 
 # Send information to the found device
 def sendToDevice(deviceMAC):
@@ -109,7 +120,7 @@ def sendToDevice(deviceMAC):
 
         port = 1
 
-        sock=bluetooth.BluetoothSocket( bluetooth.RFCOMM )
+        sock	=	bluetooth.BluetoothSocket( bluetooth.RFCOMM )
         sock.connect((bd_addr, port))
 
         sock.send("hello mobile device!!")
@@ -117,19 +128,28 @@ def sendToDevice(deviceMAC):
         sock.close()
         return
 
+#the executable portions starts:
 print "Program is now starting"
 
+# clear log and set startup
+clearLog()
 writeLog("Looking for devices")
 findDevices()
+
+#check if found device is available for connection
 arg = isDeviceAvailable('C0:EE:FB:26:EB:BC')
 
+sys.stdout.flush() #force to show printed data
+
+#if connection is available start listening for connections on port x
 if arg is True:
 	print "Device is available"
-	listenToPort(2)
+	listenToPort(3, 1)
 elif arg is None:
 	print "Someting went wrong!"
 else:
 	print "Device is not available"
 
+#end program and wait for user input
 writeLog("Program has ended")
 waitClose = raw_input("Write something!")
