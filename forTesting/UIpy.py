@@ -1,42 +1,56 @@
-# file: rfcomm-server.py
-# auth: Albert Huang <albert@csail.mit.edu>
-# desc: simple demonstration of a server application that uses RFCOMM sockets
-#
-# $Id: rfcomm-server.py 518 2007-08-10 07:20:07Z albert $
+import kivy
+import mainApp
+from kivy.app import App
+from kivy.core.window import Window
+from kivy.lang import Builder
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.label import Label
+from kivy.uix.recycleview import RecycleView
+from kivy.uix.screenmanager import Screen, ScreenManager, SlideTransition
+from kivy.uix.textinput import TextInput
 
-from bluetooth import *
+#check kivy version
+kivy.require('1.10.0')
 
-server_sock=BluetoothSocket( RFCOMM )
-server_sock.bind(("",PORT_ANY))
-server_sock.listen(1)
+#Recycler element. ! widget by type x must be type x
+Builder.load_string('''
+<Recycler>:
+    viewclass: 'Button'
+    RecycleBoxLayout:
+        border: [10,10,10,10]
+        default_size: None, dp(56)
+        default_size_hint: 1, None
+        size_hint_y: None
+        height: self.minimum_height
+        orientation: 'vertical'
+''')
 
-port = server_sock.getsockname()[1]
+class Recycler(RecycleView):
+    def __init__(self, **kwargs):
+        super(Recycler, self).__init__(**kwargs)
+        
+        devices = mainApp.findDevices()
+        if devices is None:
+            print "No devices found"
+            self.data = [{'text': 'None'}]
+        else: 
+            self.data = [{'text': str(x)} for x in devices]
 
-uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
 
-advertise_service( server_sock, "SampleServer",
-                   service_id = uuid,
-                   service_classes = [ uuid, SERIAL_PORT_CLASS ],
-                   profiles = [ SERIAL_PORT_PROFILE ],
-#                   protocols = [ OBEX_UUID ]
-                    )
+class mainWindow(BoxLayout):
+    def test():
+        pass
 
-print("Waiting for connection on RFCOMM channel %d" % port)
 
-client_sock, client_info = server_sock.accept()
-print("Accepted connection from ", client_info)
-sys.stdout.flush() #force to show printed data
 
-try:
-    while True:
-        data = client_sock.recv(1024)
-        if len(data) == 0: break
-        print("received [%s]" % data)
-except IOError:
-    pass
+class mainWindowApp(App):
 
-print("disconnected")
+    welcomeMsg = "Hello user!"
 
-client_sock.close()
-server_sock.close()
-print("all done")
+    def build(self):
+        #return Recycler()
+        return mainWindow()
+
+if __name__ == '__main__':
+    mainWindowApp().run()

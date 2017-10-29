@@ -128,28 +128,31 @@ def sendToDevice(deviceMAC):
         sock.close()
         return
 
-#the executable portions starts:
-print "Program is now starting"
 
-# clear log and set startup
-clearLog()
-writeLog("Looking for devices")
-findDevices()
+def runMainApp():
 
-#check if found device is available for connection
-arg = isDeviceAvailable('C0:EE:FB:26:EB:BC')
+	#the executable portions starts:
+	print "Program is now starting"
 
-sys.stdout.flush() #force to show printed data
+	# clear log and set startup
+	clearLog()
+	writeLog("Looking for devices")
+	findDevices()
 
-#if connection is available start listening for connections on port x
-if arg is True:
-	print "Device is available"
-	listenToPort(3, 1)
-elif arg is None:
-	print "Someting went wrong!"
-else:
-	print "Device is not available"
+	#check if found device is available for connection
+	arg = isDeviceAvailable('C0:EE:FB:26:EB:BC')
 
-#end program and wait for user input
-writeLog("Program has ended")
-waitClose = raw_input("Write something!")
+	sys.stdout.flush() #force to show printed data
+
+	#if connection is available start listening for connections on port x
+	if arg is True:
+		print "Device is available"
+		listenToPort(3, 1)
+	elif arg is None:
+		print "Someting went wrong!"
+	else:
+		print "Device is not available"
+
+	#end program and wait for user input
+	writeLog("Program has ended")
+	waitClose = raw_input("Write something!")

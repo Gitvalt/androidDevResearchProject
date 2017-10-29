@@ -1,0 +1,19 @@
+#class
+<mainWindow>:
+    canvas:
+        Rectangle:
+            size: self.size
+            pos: self.pos
+    BoxLayout:
+        orientation: "vertical"
+        BoxLayout:
+            Label:
+                text: "Available connections:"
+                color: [255,255,255,1]
+            Label:
+                text: "Tester"
+                color: [255,255,255,1]
+                
+        BoxLayout:
+            Recycler:
+                
