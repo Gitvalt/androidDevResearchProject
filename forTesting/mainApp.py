@@ -3,7 +3,10 @@ import bluetooth
 import time
 from uuid import getnode as get_mac
 import sys
+import Config
 #this is a python application for testing bluetooth based applications
+
+
 
 def getLocalTime():
 	return time.asctime(time.localtime(time.time()))
@@ -80,53 +83,87 @@ def findDevices():
 		print error
 
 # Listen to incoming messages from bluetooth device on port x
-def listenToPort(port_x, backlog):
+def listenForCommunication():
 
-	port = port_x
+	#id used to detect the service
+	UUID = Config.uuid
+
+	#create service and start to listen for responses at channel port
 	server_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
 	server_socket.bind(("", bluetooth.PORT_ANY))
 	server_socket.listen(1)
 
-	port_socket = server_socket.getsockname()[1]
-	print "Found socket: '{0}'".format(port_socket)
+	#get name of the channel
+	port = server_sock.getsockname()[1]
 
-	#print current situation
-	printmessage = "Beginning to listen port '{0}' and setting backlog to '{1}'".format(port_socket, backlog)
-	writeLog(printmessage)
-	print printmessage + "\n"
+	advertise_service( server_sock, "SampleServer",
+	                   service_id = uuid,
+	                   service_classes = [ uuid, SERIAL_PORT_CLASS ],
+	                   profiles = [ SERIAL_PORT_PROFILE ],
+	#                   protocols = [ OBEX_UUID ]
+	                    )
+
+	#write current status
+	msg = "Listening for communication from RFCOMM channel {0}".format(port)
+	print msg
+	writeLog(msg)
 	sys.stdout.flush() #force to show printed data
 
+	#server now starts listening for connections from RFCOMM. Continues when
 	client, client_info = server_socket.accept()
 
-	while True:
-		data = client.recv(1024)
-		print "data received %s" & data
-		sys.stdout.flush() #force to show printed data
-		if raw_input() is not None:
-			False
+	try:
+	    while True:
+	        data = client_sock.recv(1024)
+	        if len(data) == 0: break
+	        print("received [%s]" % data)
+			writeLog(data)
+	except IOError:
+	    pass
 
+	print("disconnected")
 
-	client.close()
-	server_socket.close()
+	client_sock.close()
+	server_sock.close()
+	print("all done")
 
 # Send information to the found device
-def sendToDevice(deviceMAC):
+def sendToDevice(deviceMAC, message):
 
-    if deviceMAC is None:
-        return
+    if deviceMAC is None or message is None:
+		print "You need a device address and a message in order to send bluetooth message"
+        return False
 
     else:
-        bd_addr = deviceMAC
+		#find bluetooth service with id {uuid} from address {deviceMac}
+		service_matches = find_service( uuid = uuid, address = addr )
+		if len(service_matches) == 0:
+			print "Could not find service"
+			writeLog("Could not find the service")
+			return False
 
-        port = 1
+		foundService = service_matches[0]
+		port = foundService["port"]
+		name = foundService["name"]
+		host = foundService["host"]
 
-        sock	=	bluetooth.BluetoothSocket( bluetooth.RFCOMM )
-        sock.connect((bd_addr, port))
+		print "Service was found"
+		writeLog("Found service: '{0}' from port: '{1}' at host: '{2}'".format(name, port, host))
 
-        sock.send("hello mobile device!!")
+		# Create the client socket
+		sock=BluetoothSocket( RFCOMM )
+		sock.connect((host, port))
 
-        sock.close()
-        return
+		print("connected.  type stuff")
+		while True:
+		    data = input()
+		    if len(data) == 0: break
+		    sock.send(data)
+
+		sock.close()
+
+
+		return True
 
 
 def runMainApp():
@@ -142,12 +179,13 @@ def runMainApp():
 	#check if found device is available for connection
 	arg = isDeviceAvailable('C0:EE:FB:26:EB:BC')
 
-	sys.stdout.flush() #force to show printed data
+	sys.stdout.flush() #force terminal to print pending prints
 
 	#if connection is available start listening for connections on port x
 	if arg is True:
 		print "Device is available"
-		listenToPort(3, 1)
+		response = listenForCommunication()
+
 	elif arg is None:
 		print "Someting went wrong!"
 	else:
@@ -156,3 +194,5 @@ def runMainApp():
 	#end program and wait for user input
 	writeLog("Program has ended")
 	waitClose = raw_input("Write something!")
+
+runMainApp()
