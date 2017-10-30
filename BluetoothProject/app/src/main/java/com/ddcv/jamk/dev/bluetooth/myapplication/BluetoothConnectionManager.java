@@ -41,7 +41,7 @@ public class BluetoothConnectionManager {
      * @member  foundDevices        foundDevices        List of found BluetoothDevices
      * @member  BluetoothAdapter    mBluetoothAdapter   Adapter that handles current bluetooth connections
      * @member  int                 mScanningTimeout    How many second until stopping discover devices
-     * @member  UUID                myUID               This client - server application indentification id (client detects a server with bluetooth service label with same ID)
+     * @member  UUID                myUUID               This client - server application indentification id (client detects a server with bluetooth service label with same ID)
      */
     private Context mContext;
     private Activity mActivity;
@@ -49,7 +49,7 @@ public class BluetoothConnectionManager {
     public ArrayMap<String, BluetoothDevice> foundDevices;
     public BluetoothAdapter mBluetoothAdapter;
     private static final int mScanningTimeout = 20; //As in 20 seconds
-    private final UUID myUID = UUID.fromString("94f39d29-7d6d-437d-973b-fba39e49d4ee");
+    private final UUID myUUID = UUID.fromString("94f39d29-7d6d-437d-973b-fba39e49d4ee");
 
     //possible actions for bluetooth
     public enum DeviceAction {
@@ -288,6 +288,8 @@ public class BluetoothConnectionManager {
         }
     }
 
+
+
     /**
      * 1. create "BluetoothClien"-thread socket to the SelectedDevice
      * 2. send message to device
@@ -296,22 +298,20 @@ public class BluetoothConnectionManager {
      * @param mDevice
      */
     public void sendMessage(String message, BluetoothDevice mDevice){
+
+        mBluetoothAdapter.cancelDiscovery();
+
         //create the socket for communication
         BluetoothClient thread = new BluetoothClient(mDevice);
-
-        //start connecting
-        thread.start();
 
         thread.run();
 
         //for testing
         BluetoothSocket socket = thread.getSocket();
 
-
         if(!thread.mSocket.isConnected())
         {
             Log.e("Bluetooth", "Socket connection that should be open, is not open!");
-            sendMessage(message, mDevice);
             return;
         }
         else
@@ -353,17 +353,51 @@ public class BluetoothConnectionManager {
         public BluetoothClient(BluetoothDevice device)
         {
             BluetoothSocket tmp = null;
+
+            try {   tmp = device.createRfcommSocketToServiceRecord(myUUID);  }
+            catch (IOException error)
+            {
+                Log.e("BLUETOOTH_CONNECTION", "Creating socket has failed: " + error.getMessage());
+                mSocket = null;
+                mDevice = device;
+                return;
+            }
+
             try
             {
-                tmp = device.createRfcommSocketToServiceRecord(myUID);
+                //try connecting to socket, if fails then try fallback method
+                tmp.connect();
             }
-            catch (Exception e){
-                Log.e("BLUETOOTH_CONNECTION", "Creating socket has failed: " + e.getMessage());
+            catch (IOException err)
+            {
+                //connecting through socket failed --> fallback
+                try
+                {
+                    //Android devices with version higher than 4.2 will need to use this
+                    tmp = (BluetoothSocket)device.getClass().getMethod("createRfcommSocket", new Class[] {int.class}).invoke(device, Integer.valueOf(1));
+                    tmp.connect();
+                    Log.i("Bluetooth", "Socket connection success");
+                }
+                catch (Exception er)
+                {
+                    Log.e("Bluetooth", "Socket fallback failed: ");
+                    Log.e("Bluetooth", er.getMessage());
+                    mSocket = null;
+                    mDevice = device;
+                    return; //return as fallback fails
+                }
+
+                //set the thread members
+                mSocket = tmp;
+                mDevice = device;
+                return; //fallback succeeded
             }
+
 
             //set the thread members
             mSocket = tmp;
             mDevice = device;
+            return; //no fallback needed, everything worked
         }
 
         /**
@@ -383,21 +417,20 @@ public class BluetoothConnectionManager {
             //mBluetoothAdapter.cancelDiscovery();
 
             try {
-                //try to connect to socket until connection is created
-                while(!mSocket.isConnected()){
+                if(mSocket.isConnected())
+                {
+                    Log.i("Bluetooth", "Connection already exists!");
+                }
+                else
+                {
                     mSocket.connect();
                 }
-
             }
             catch (IOException connectException)
             {
                 Log.e("BluetoothClient", "Error in connecting to Socket: " + connectException.getMessage());
                 return;
             }
-
-            // The connection attempt succeeded. Perform work associated with
-            // the connection in a separate thread.
-            String item = "success!";
             return;
         }
 
@@ -417,6 +450,7 @@ public class BluetoothConnectionManager {
         }
     }
 
+
     /**
      * @class   BluetoothClient_Listen     receive Bluetooth communication from other devices (act as a server)
      */
@@ -424,14 +458,13 @@ public class BluetoothConnectionManager {
 
         private final BluetoothServerSocket mServerSocket;
         private static final String NAME = "Android phone client";
-        private final UUID MY_UUID = UUID.fromString("94f39d29-7d6d-437d-973b-fba39e49d4ee");
 
         public BluetoothClient_Listen() {
 
             BluetoothServerSocket tmp = null;
             try
             {
-                tmp = mBluetoothAdapter.listenUsingRfcommWithServiceRecord(NAME, MY_UUID);
+                tmp = mBluetoothAdapter.listenUsingRfcommWithServiceRecord(NAME, myUUID);
             }
             catch (IOException ex) {
                 Log.e("Bluetooth", ex.getMessage());
@@ -484,7 +517,6 @@ public class BluetoothConnectionManager {
          * @member  mBuffer         Temporary variable contains the data
          * @member  mHandler        Handle data reading
          */
-        private final UUID myUID = UUID.fromString("94f39d29-7d6d-437d-973b-fba39e49d4ee");
         private final BluetoothSocket mSocket;
         private final InputStream mInputStream;
         private final OutputStream mOutputStream;
@@ -500,12 +532,14 @@ public class BluetoothConnectionManager {
             InputStream tmpIn = null;
             OutputStream tmpOut = null;
 
-            try {
+            try
+            {
                 if (!mSocket.isConnected()) {
                     mSocket.connect();
                 }
             }
-            catch (Exception e){
+            catch (Exception e)
+            {
                 Log.e("error", e.getMessage());
             }
 
@@ -562,11 +596,12 @@ public class BluetoothConnectionManager {
         public void write(byte[] bytes){
             try {
                 mOutputStream.write(bytes);
-
-                Message writtenMsg = mHandler.obtainMessage(1, -1, -1, mBuffer);
-                writtenMsg.sendToTarget();
-
-            }catch (IOException e){
+                mOutputStream.flush();
+            }
+            catch (NullPointerException nullE){
+                Log.e("Bluetooth_Handler", nullE.getMessage());
+            }
+            catch (IOException e){
                 Log.e("Bluetooth_message", "Error in writing to remote device", e);
 
                 //send failure msg to activity
