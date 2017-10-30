@@ -29,6 +29,7 @@ def isDeviceAvailable(targetMAC):
 		return error
 
 #Use bluetooth to find any available bluetooth devices. NOTE! paired devices are always returned as found
+#(array | None)
 def findDevices():
 	writeLog("Looking for bluetooth devices")
 	try:
@@ -128,9 +129,9 @@ def sendToDevice(deviceMAC, message):
 		host = foundService["host"]
 
 		print "Service was found"
-
         print_msg = "Found service: '{0}' from port: '{1}' at host: '{2}'".format(name, port, host)
 		writeLog(print_msg)
+
 		print print_msg
 		sys.stdout.flush() #force terminal to print pending prints
 
