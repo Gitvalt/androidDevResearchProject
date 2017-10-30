@@ -348,14 +348,14 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
                 }
                 break;
             case connect:
-                BluetoothController.sendMessage("Hello server!", selectedDevice);
-                //BluetoothController.getMessages(selectedDevice);
+                //BluetoothController.sendMessage("Hello server!", selectedDevice);
+                BluetoothController.getMessages(selectedDevice);
 
                 break;
 
             //sends a message to the bluetooth device
             case message:
-                BluetoothController.sendMessage("Hello server!", selectedDevice);
+                //BluetoothController.sendMessage("Hello server!", selectedDevice);
                 break;
         }
 

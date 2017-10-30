@@ -21,6 +21,7 @@ import android.support.v4.content.PermissionChecker;
 import android.support.v4.util.ArrayMap;
 import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -484,6 +485,7 @@ public class BluetoothConnectionManager {
                     if(socket != null)
                     {
                         Log.i("Bluetooth", "Communication received!");
+                        Toast.makeText(mActivity.getApplicationContext(), "Got communication", Toast.LENGTH_SHORT).show();
                         mServerSocket.close();
                         break;
                     }
