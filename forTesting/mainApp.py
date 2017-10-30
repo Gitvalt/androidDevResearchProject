@@ -16,11 +16,12 @@ def runMainApp():
 	# clear log and set startup
 	print "Program is now starting...\n"
 	sys.stdout.flush() #force terminal to print pending prints
+	
 	clearLog()
 	writeLog("Program has started")
 
 	print "Find nearby bluetooth devices"
-	getDevices = findDevices();
+	getDevices = findDevices()
 
 	if getDevices is None:
 		print "No devices available"
@@ -30,5 +31,5 @@ def runMainApp():
 
 	writeLog("Program has ended")
 
-#runMainApp()
-print readLog();
+runMainApp()
+print readLog()

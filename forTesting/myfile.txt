@@ -1,3 +1,0 @@
-New log created on: 'Mon Oct 30 22:42:48 2017' 
-Action: 'Looking for devices' executed at 'Mon Oct 30 22:42:48 2017'
-Action: 'No devices were found' executed at 'Mon Oct 30 22:42:48 2017'

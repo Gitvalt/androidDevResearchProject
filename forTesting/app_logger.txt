@@ -1,0 +1,7 @@
+New log created on: 'Tue Oct 31 00:15:47 2017' 
+Action: 'Program has started' executed at 'Tue Oct 31 00:15:47 2017'
+Action: 'Looking for bluetooth devices' executed at 'Tue Oct 31 00:15:47 2017'
+Action: 'A device is found. Address: C0:EE:FB:26:EB:BC' executed at 'Tue Oct 31 00:15:57 2017'
+Action: 'Finding devices completed:' executed at 'Tue Oct 31 00:15:57 2017'
+Action: 'Devices were found! Count: 1' executed at 'Tue Oct 31 00:15:57 2017'
+Action: 'Program has ended' executed at 'Tue Oct 31 00:15:57 2017'

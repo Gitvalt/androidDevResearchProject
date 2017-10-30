@@ -6,7 +6,7 @@ from bluetooth import *
 #(True | False | {error_message})
 def isDeviceAvailable(targetMAC):
     writeLog("Testing if MAC: '%s' is available" % targetMAC)
-	try:
+    try:
 		#devices found (paired devices will respond with true even if not currently available)
 		nearby_devices = discover_devices()
 
@@ -24,44 +24,43 @@ def isDeviceAvailable(targetMAC):
 			writeLog("Bluetooth device with address '{0}' was not found".format(targetMAC))
 			return False
 
-	except IOError as error:
-		print "Error in finding the devices:" + error + "\n"
-		return error
+    except IOError as error:
+        print "Error in finding the devices:" + error + "\n"
+        return error
 
 #Use bluetooth to find any available bluetooth devices. NOTE! paired devices are always returned as found
 #(array | None)
 def findDevices():
-	writeLog("Looking for bluetooth devices")
-	try:
-		nearby_devices = discover_devices()
+    writeLog("Looking for bluetooth devices")
+    try:
+        nearby_devices = discover_devices()
 
-		i = 0
-		for address in nearby_devices:
-			writeLog("A device is found. Address: " + address)
-			i = i + 1
+        i = 0
+        for address in nearby_devices:
+            writeLog("A device is found. Address: " + address)
+            i = i + 1
 
         #all found devices has been handled
-		else:
-
+        else:
             writeLog("Finding devices completed:")
 
             if i > 0:
                 writeLog("Devices were found! Count: " + str(i))
-				return nearby_devices
+                return nearby_devices
 
-			else:
-				writeLog("No devices were found")
-				return None
+            else:
+                writeLog("No devices were found")
+                return None
 
-	except IOError as error:
+    except IOError as error:
         writeLog("Finding devices completed:")
-		writeLog("Devices could not be read. ERROR! " + error.message)
-		return None
+        writeLog("Devices could not be read. ERROR! " + error.message)
+        return None
 
 # Listen to incoming messages from bluetooth device on port x
 def listenForCommunication():
 
-    writeLog("Listening for incoming bluetooth communication")
+	writeLog("Listening for incoming bluetooth communication")
 
 	#id used to detect the service
 	UUID = Config.uuid
@@ -74,13 +73,13 @@ def listenForCommunication():
 	#get name of the channel
 	port = server_socket.getsockname()[1]
 
-    #Advertises the service to devices scanning for it
+	#Advertises the service to devices scanning for it
 	advertise_service( server_socket, "Picture Frame Application",
-						service_id = UUID,
-						service_classes = [ UUID, SERIAL_PORT_CLASS ],
-						profiles = [ SERIAL_PORT_PROFILE ],
+			service_id = UUID,
+			service_classes = [ UUID, SERIAL_PORT_CLASS ],
+			profiles = [ SERIAL_PORT_PROFILE ],
 	#                   protocols = [ OBEX_UUID ]
-						)
+			)
 
 	#write current status
 	msg = "Listening for communication from RFCOMM channel {0}".format(port)
@@ -98,16 +97,16 @@ def listenForCommunication():
 	except IOError:
 		pass
 
-    writeLog("Disconnected")
+	writeLog("Disconnected")
 	client.close()
 	server_socket.close()
-    writeLog("Listening for communication ended")
-    return data
+	writeLog("Listening for communication ended")
+	return data
 
 # Send information to the found device
 def sendToDevice(deviceMAC, message):
 
-    writeLog("Sending message '{0}' to device with address '{1}'".format(message, deviceMAC))
+	writeLog("Sending message '{0}' to device with address '{1}'".format(message, deviceMAC))
 
 	UUID = Config.uuid
 
@@ -129,7 +128,7 @@ def sendToDevice(deviceMAC, message):
 		host = foundService["host"]
 
 		print "Service was found"
-        print_msg = "Found service: '{0}' from port: '{1}' at host: '{2}'".format(name, port, host)
+		print_msg = "Found service: '{0}' from port: '{1}' at host: '{2}'".format(name, port, host)
 		writeLog(print_msg)
 
 		print print_msg
@@ -143,9 +142,9 @@ def sendToDevice(deviceMAC, message):
 		sys.stdout.flush() #force terminal to print pending prints
 
 		while True:
-		    data = input()
-		    if len(data) == 0: break
-		    sock.send(data)
-		sock.close()
-		print "\n"
-		return True
+			data = input()
+			if len(data) == 0: break
+			sock.send(data)
+			sock.close()
+			print "\n"
+			return True
