@@ -4,7 +4,8 @@ from File_manager import *
 from bluetooth_manager import *
 import time
 import sys
-
+import Tkinter
+from mainView import *
 #This is a python application for testing bluetooth based applications
 #"bluetooth" is from opensource PyBluez -module
 
@@ -16,7 +17,7 @@ def runMainApp():
 	# clear log and set startup
 	print "Program is now starting...\n"
 	sys.stdout.flush() #force terminal to print pending prints
-	
+
 	clearLog()
 	writeLog("Program has started")
 
@@ -31,5 +32,10 @@ def runMainApp():
 
 	writeLog("Program has ended")
 
-runMainApp()
-print readLog()
+def WelcomeScreen():
+	print "graphics"
+	Tkinter._test()
+
+
+print "Aloitetaan!"
+graphics()
