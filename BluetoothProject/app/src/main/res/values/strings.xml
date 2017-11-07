@@ -13,4 +13,7 @@
     <string name="Unavailable">Unavailable</string>
     <string name="error_bonding">Bonding error!</string>
 
+    <string name="conn_status">Connection status</string>
+    <string name="connect_to">Connect to device</string>
+
 </resources>

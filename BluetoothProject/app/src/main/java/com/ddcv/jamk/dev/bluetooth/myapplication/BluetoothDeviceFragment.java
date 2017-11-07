@@ -15,14 +15,22 @@ import android.view.ViewGroup;
 
 public class BluetoothDeviceFragment extends Fragment {
 
+    /**
+     * @member  BluetoothDevice  mBluetoothDevice    The selected bluetooth device
+     */
+
     private BluetoothDevice mBluetoothDevice;
 
+    /**
+     * @return  Response with copy of the selected mBluetoothDevice
+     */
     public BluetoothDevice getSelectedBluetoothDevice() { return mBluetoothDevice; }
 
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
     }
+
 
     @Nullable
     @Override
@@ -31,8 +39,16 @@ public class BluetoothDeviceFragment extends Fragment {
         return view;
     }
 
+
     public void setBluetoothDevice(BluetoothDevice device){
         mBluetoothDevice = device;
+    }
+
+    /**
+     * Return to devicelist fragment
+     */
+    public void onReturn(){
+
     }
 
 }
