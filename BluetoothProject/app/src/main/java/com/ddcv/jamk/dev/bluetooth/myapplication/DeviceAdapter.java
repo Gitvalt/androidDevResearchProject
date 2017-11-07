@@ -56,13 +56,13 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
 
         switch (state){
             case BluetoothDevice.BOND_BONDING:
-                holder.deviceStatus.setText("Bonding...");
+                holder.deviceStatus.setText(R.string.Bonding);
                 break;
             case BluetoothDevice.BOND_BONDED:
-                holder.deviceStatus.setText("Bonded with device!");
+                holder.deviceStatus.setText(R.string.Bonded_with);
                 break;
             case BluetoothDevice.BOND_NONE:
-                holder.deviceStatus.setText("Not bonded");
+                holder.deviceStatus.setText(R.string.noBond);
                 break;
         }
 

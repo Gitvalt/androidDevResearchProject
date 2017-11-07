@@ -1,4 +1,16 @@
 <resources>
     <string name="app_name">Bluetooth Demo App</string>
     <string name="main_header_0">Found Devices</string>
+
+    <string name="Status">Device status</string>
+    <string name="noBond">No bond</string>
+    <string name="Bonding">Bonding...</string>
+    <string name="Bonded">Bonded</string>
+    <string name="Bonded_with">Bonded with device!</string>
+    <string name="UnBonding">Unbonding...</string>
+    <string name="Unbonded">Unbonded</string>
+
+    <string name="Unavailable">Unavailable</string>
+    <string name="error_bonding">Bonding error!</string>
+
 </resources>
