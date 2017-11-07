@@ -134,8 +134,11 @@ public class BluetoothConnectionManager {
      * set app to register thrown bluetooth broadcasts. After completion move to finding devices
      */
     public void registerBluetoothService(){
-        //we set the app to listen for bluetooth broadcast's "ACTION_FOUND" = bluetooth device was detected and "ACTION_BOND_STATE_CHANGED" = "Pairing with device has changed"
+        //we set the app to listen for bluetooth broadcast's "ACTION_FOUND" = bluetooth device was detected and "ACTION_BOND_STATE_CHANGED" = "Pairing with device has changed",
+        //DISCOVERY_STARTED and DISCOVERY_FINISHED thrown when scanning has been ended
         mContext.registerReceiver(mReceiver, new IntentFilter(BluetoothDevice.ACTION_FOUND));
+        mContext.registerReceiver(mReceiver, new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_STARTED));
+        mContext.registerReceiver(mReceiver, new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED));
         mContext.registerReceiver(mReceiver, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
     }
 
@@ -275,7 +278,7 @@ public class BluetoothConnectionManager {
                     @Override
                     public void run() {
                         mBluetoothAdapter.cancelDiscovery();
-                        Log.i("Bluetooth_Scanning", "Ending scanning...");
+                        Log.i("Bluetooth_Scanning", "Scanning thread has ended...");
                     }
                 }, time);
 
