@@ -57,6 +57,38 @@ def findDevices():
         writeLog("Devices could not be read. ERROR! " + error.message)
         return None
 
+def pingAddress(mac):
+	if mac is None:
+		# Device address is not defined
+		print "Mac address cannot be none!"
+	else:
+		if isDeviceAvailable(mac) is True:
+			# Connection can be tester
+			sendToDevice(mac, "Hello device!")
+			respone = listenForCommunication()
+			if respone is not None:
+				# Response was received
+				print "Ping was successfull"
+			else:
+				print "No response was received. Timeout!"
+		else:
+			# Device cannot be connected to
+			print "Device '{0}' is unavailable at the moment.".format(mac)
+
+
+def imageSlideShow():
+	i = 10 #count of images
+	current_number = i
+	
+	next_number = current_number - 1
+
+	if next_number <= -1:
+		current_number = i
+	else:
+		current_number = next_number
+	
+	return image[current_number]
+
 # Listen to incoming messages from bluetooth device on port x
 def listenForCommunication():
 
