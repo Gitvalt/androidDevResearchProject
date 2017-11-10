@@ -12,6 +12,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.util.ArrayMap;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -29,7 +30,7 @@ import java.lang.reflect.Method;
  * Created by K1967 on 7.11.2017.
  */
 
-public class BluetoothListFragment extends Fragment implements DeviceAdapter.DeviceListener {
+public class BluetoothListFragment extends android.support.v4.app.Fragment implements DeviceAdapter.DeviceListener {
 
     /**
      * @member  ProgressBar                 spinningCircle      Shown when devices are searched
@@ -54,6 +55,7 @@ public class BluetoothListFragment extends Fragment implements DeviceAdapter.Dev
         void setSelectedDevice(BluetoothDevice selectedDevice, BluetoothConnectionManager.DeviceAction action);
     }
 
+
     /**
      * When View is created on the activity, setup basic stuff
      * @param inflater
@@ -70,14 +72,39 @@ public class BluetoothListFragment extends Fragment implements DeviceAdapter.Dev
         //setup progressbar for scanning devices
         spinningCircle = (ProgressBar)view.findViewById(R.id.progressBar);
 
+        FloatingActionButton button_refs = (FloatingActionButton)view.findViewById(R.id.refreshButton);
+        FloatingActionButton button_return = (FloatingActionButton)view.findViewById(R.id.exitButton);
+
+        button_refs.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Log.i("Bluetooth", "Finding new devices");
+                mainActivity.getBluetoothController().FindNewDevices();
+            }
+        });
+
+        button_return.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent leave = new Intent(Intent.ACTION_MAIN);
+                leave.addCategory(Intent.CATEGORY_HOME);
+                leave.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(leave);
+            }
+        });
+
+
         //list of shown devices
         deviceList = (RecyclerView)view.findViewById(R.id.listView);
         layoutManager = new LinearLayoutManager(getActivity().getApplicationContext());
 
         deviceList.setLayoutManager(layoutManager);
 
+        setBluetoothManager((MainActivity)getActivity(), (MainActivity)getActivity());
+
         return view;
     }
+
 
     /**
      * After fragment has been created, add reference to parent activity
@@ -90,6 +117,7 @@ public class BluetoothListFragment extends Fragment implements DeviceAdapter.Dev
         deviceList.setAdapter(deviceListAdapter);
 
         this.callback = callbackFunction;
+        mainActivity.enableBluetooth();
     }
 
 
@@ -110,7 +138,7 @@ public class BluetoothListFragment extends Fragment implements DeviceAdapter.Dev
         }
 
         mainActivity.getBluetoothController().FindNewDevices();
-        //program continues in BroadcastReceiver.ActionDiscovery finished
+        //program continues in MainActivity BroadcastReceiver.Action_Discovery finished
     }
 
 
@@ -120,10 +148,10 @@ public class BluetoothListFragment extends Fragment implements DeviceAdapter.Dev
          * Clear list, search new devices
          */
         public void onRefreshListClick(View parent){
-            /*
+
             Log.i("Bluetooth", "Finding new devices");
-            BluetoothController.FindNewDevices();
-            */
+            mainActivity.getBluetoothController().FindNewDevices();
+
         }
 
 

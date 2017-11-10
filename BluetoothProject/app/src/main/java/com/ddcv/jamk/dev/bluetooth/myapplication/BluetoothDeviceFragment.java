@@ -13,7 +13,7 @@ import android.view.ViewGroup;
  * Created by K1967 on 7.11.2017.
  */
 
-public class BluetoothDeviceFragment extends Fragment {
+public class BluetoothDeviceFragment extends android.support.v4.app.Fragment {
 
     /**
      * @member  BluetoothDevice  mBluetoothDevice    The selected bluetooth device

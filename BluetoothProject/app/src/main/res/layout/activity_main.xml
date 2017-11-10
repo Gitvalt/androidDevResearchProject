@@ -6,12 +6,16 @@
     android:layout_height="match_parent"
     tools:context="com.ddcv.jamk.dev.bluetooth.myapplication.MainActivity">
 
-
-    <fragment
+    <FrameLayout
         android:id="@+id/mainFragment"
-        android:name="com.ddcv.jamk.dev.bluetooth.myapplication.BluetoothListFragment"
-        android:layout_width="368dp"
+        android:layout_width="344dp"
         android:layout_height="495dp"
-        tools:layout_editor_absoluteX="8dp"
-        tools:layout_editor_absoluteY="8dp" />
+        android:layout_marginLeft="8dp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="8dp">
+
+    </FrameLayout>
+
 </android.support.constraint.ConstraintLayout>

@@ -3,6 +3,8 @@ package com.ddcv.jamk.dev.bluetooth.myapplication;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Fragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
 import android.app.ListFragment;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
@@ -21,6 +23,7 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -30,9 +33,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.UUID;
 
-public class MainActivity extends Activity implements BluetoothListFragment.SelectionListener {
+public class MainActivity extends FragmentActivity implements BluetoothListFragment.SelectionListener {
 
 
     /**
@@ -46,7 +50,9 @@ public class MainActivity extends Activity implements BluetoothListFragment.Sele
     public static final int ENABLE_BLUETOOTH_CODE = 123;
     public static final int ALLOW_BLUETOOTH_CODE = 456;
 
-    public BluetoothListFragment fragment;
+    public FrameLayout mainDisplay;
+
+    //----Activity functions
 
     /**
      * App is created
@@ -60,17 +66,31 @@ public class MainActivity extends Activity implements BluetoothListFragment.Sele
 
         BluetoothController = new BluetoothConnectionManager(getApplicationContext(), this, mReceiver);
 
-        BluetoothListFragment container = (BluetoothListFragment) getFragmentManager().findFragmentById(R.id.mainFragment);
+        BluetoothListFragment defaultFragment = new BluetoothListFragment();
 
-        container.setBluetoothManager(this, this);
-        fragment = container;
+        mainDisplay = (FrameLayout)findViewById(R.id.mainFragment);
+        getSupportFragmentManager().beginTransaction().add(R.id.mainFragment, defaultFragment).addToBackStack(null).commit();
+        getSupportFragmentManager().executePendingTransactions();
 
-        enableBluetooth();
+        List<android.support.v4.app.Fragment> getFragment = getSupportFragmentManager().getFragments();
+        android.support.v4.app.Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.mainFragment);
+        BluetoothListFragment list = (BluetoothListFragment)fragment;
+
+        fragment = (BluetoothListFragment)getSupportFragmentManager().findFragmentById(R.id.mainFragment);
+
+        //enableBluetooth();
     }
 
-    public BluetoothConnectionManager getBluetoothController() {
-        return BluetoothController;
+    /**
+     * When app is closed, remove registers
+     */
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(mReceiver);
     }
+
+    //----Internal methods
 
     /**
      * when an bluetooth device is selected from the list
@@ -92,97 +112,210 @@ public class MainActivity extends Activity implements BluetoothListFragment.Sele
             default:
                 BluetoothDeviceFragment deviceFragment = new BluetoothDeviceFragment();
                 deviceFragment.setBluetoothDevice(selectedDevice);
-                getFragmentManager()
-                        .beginTransaction()
-                        .replace(R.id.mainFragment, deviceFragment)
-                        .addToBackStack(null)
-                        .commit();
 
+                getSupportFragmentManager().beginTransaction().replace(R.id.mainFragment, deviceFragment).commit();
+                Log.i("Fragments", "Fragment changed!");
                 break;
         }
-
-        /**
-         * case unBond:
-         Log.i("Bluetooth", "Breaking bond with device '" + selectedDevice.getName() + "' at " + selectedDevice.getAddress());
-         try {
-         Method m = selectedDevice.getClass().getMethod("removeBond", (Class[]) null);
-         m.invoke(selectedDevice, (Object[]) null);
-
-         AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
-         builder.setTitle("Warning");
-         builder.setMessage("Currently only the phone is unpaired. Other device still thinks there is a connection. For reconnection remove pairing manually from other device");
-         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-        @Override public void onClick(DialogInterface dialogInterface, int i) {
-
-        }
-        });
-
-         AlertDialog alert = builder.create();
-         alert.show();
-
-         }
-         catch(Exception e)
-         {
-         Log.e("Bluetooth error", "Removing bond failed");
-         }
-         break;
-         case connect:
-         //BluetoothController.sendMessage("Hello server!", selectedDevice);
-         getBluetoothController().getMessages(selectedDevice);
-
-         break;
-
-         //sends a message to the bluetooth device
-         case message:
-         //BluetoothController.sendMessage("Hello server!", selectedDevice);
-         break;
-         */
     }
 
-    private void enableBluetooth() {
-        //check if phone supports bluetooth communication
-        if (BluetoothController.mBluetoothAdapter == null) {
+    /**
+     * @desc Find a fragment of type $fragmentClass
+     * @param fragmentClass Class that is under search
+     * @return null if not found, else return the found fragment
+     */
+    private android.support.v4.app.Fragment getFragmentWithType(Class fragmentClass){
 
-            //Bluetooth is not supported
-            Log.e("Bluetooth", "Bluetooth is not supported by this device");
+        List<android.support.v4.app.Fragment> getF = getSupportFragmentManager().getFragments();
 
-            AlertDialog.Builder alert = new AlertDialog.Builder(this);
-            alert.setTitle("Bluetooth not supported");
-            alert.setMessage("I guess this phone cannot use Bluetooth..." + "\n" + "\n" + "Hint: Android emulator cannot emulate bluetooth, use real phone instead");
-            alert.setCancelable(false);
-            alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    //close application
-                    System.exit(0);
-                }
-            });
-            AlertDialog dialog = alert.create();
+        boolean isFound = false;
+        int foundIndex = -1;
 
-            dialog.show();
-        } else {
-            //bluetooth is supported
-            Log.i("Bluetooth", "Bluetooth is implemented!");
-            boolean isEnabled = BluetoothController.mBluetoothAdapter.isEnabled();
-
-            /**
-             * is bluetooth on?
-             * if yes, then we register what we want to listen and start looking for devices
-             * if no, then ask to enable from user and wait for onActivityResult
-             */
-            if (isEnabled) {
-                BluetoothController.registerBluetoothService();
-                fragment.lookForDevices();
-            } else {
-                BluetoothController.setBluetoothEnabled(true);
-                Log.i("Bluetooth_status", "Bluetooth is not Enabled");
+        for(int i = 0; i < getF.size(); i++)
+        {
+            if(getF.get(i).getClass() == fragmentClass)
+            {
+                isFound = true;
+                foundIndex = i;
+                break;
             }
         }
 
+        if(isFound == true)
+        {
+            return getF.get(foundIndex);
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    /**
+     * case unBond:
+     Log.i("Bluetooth", "Breaking bond with device '" + selectedDevice.getName() + "' at " + selectedDevice.getAddress());
+     try {
+     Method m = selectedDevice.getClass().getMethod("removeBond", (Class[]) null);
+     m.invoke(selectedDevice, (Object[]) null);
+
+     AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
+     builder.setTitle("Warning");
+     builder.setMessage("Currently only the phone is unpaired. Other device still thinks there is a connection. For reconnection remove pairing manually from other device");
+     builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+    @Override public void onClick(DialogInterface dialogInterface, int i) {
+
+    }
+    });
+
+     AlertDialog alert = builder.create();
+     alert.show();
+
+     }
+     catch(Exception e)
+     {
+     Log.e("Bluetooth error", "Removing bond failed");
+     }
+     break;
+     case connect:
+     //BluetoothController.sendMessage("Hello server!", selectedDevice);
+     getBluetoothController().getMessages(selectedDevice);
+
+     break;
+
+     //sends a message to the bluetooth device
+     case message:
+     //BluetoothController.sendMessage("Hello server!", selectedDevice);
+     break;
+     */
+
+    /**
+     *@desc Activate phone's bluetooth if available
+     */
+    public void enableBluetooth()
+    {
+
+            //check if phone supports bluetooth communication
+            if (BluetoothController.mBluetoothAdapter == null)
+            {
+
+                //Bluetooth is not supported
+                Log.e("Bluetooth", "Bluetooth is not supported by this device");
+
+                AlertDialog.Builder alert = new AlertDialog.Builder(this);
+                alert.setTitle("Bluetooth not supported");
+                alert.setMessage("I guess this phone cannot use Bluetooth..." + "\n" + "\n" + "Hint: Android emulator cannot emulate bluetooth, use real phone instead");
+                alert.setCancelable(false);
+                alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        //close application
+                        System.exit(0);
+                    }
+                });
+                AlertDialog dialog = alert.create();
+
+                dialog.show();
+            }
+            else
+            {
+
+                //bluetooth is supported
+                Log.i("Bluetooth", "Bluetooth is implemented!");
+                boolean isEnabled = BluetoothController.mBluetoothAdapter.isEnabled();
+
+                /**
+                 * is bluetooth on?
+                 * if yes, then we register what we want to listen and start looking for devices
+                 * if no, then ask to enable from user and wait for onActivityResult
+                 */
+                if (isEnabled)
+                {
+                    BluetoothController.registerBluetoothService();
+
+                    BluetoothListFragment frag = (BluetoothListFragment)getSupportFragmentManager().findFragmentById(R.id.mainFragment);
+                    frag.lookForDevices();
+                }
+                else
+                {
+                    BluetoothController.setBluetoothEnabled(true);
+                    Log.i("Bluetooth_status", "Bluetooth is not Enabled");
+                }
+
+            }
+
+        }
+
+    /**
+     * @desc returns the MainActivity's bluetooth controller object
+     * @return BluetoothController
+     */
+    public BluetoothConnectionManager getBluetoothController() {
+            return BluetoothController;
+        }
+
+    /**
+     * What type of fragment is currently shown in main
+     * @return Class of current fragment
+     */
+    private Class getFragmentClass_main(){
+
+        Class fragmentClass =getSupportFragmentManager().findFragmentById(R.id.mainFragment).getClass();
+
+        if(fragmentClass == null)
+        {
+            return null;
+        }
+        else
+        {
+            return fragmentClass;
+        }
     }
 
 
-    //Receivers:
+    public BluetoothListFragment getListFragment(){
+
+        try {
+
+            /**
+             * if null then no fragment available
+             * else
+             */
+            if(getFragmentClass_main() == null)
+            {
+                return null;
+            }
+            else
+            {
+                if(getFragmentClass_main() != BluetoothListFragment.class)
+                {
+                    //mainview is not displaying bluetoothlist
+                    return null;
+                }
+                else
+                {
+                    BluetoothListFragment fragment1 = (BluetoothListFragment) getSupportFragmentManager().findFragmentById(R.id.mainFragment);
+
+                    if(fragment1 != null)
+                    {
+                        return fragment1;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+            }
+
+
+        }
+        catch (Exception error)
+        {
+            Log.e("Error", error.getMessage());
+            return null;
+        }
+    }
+
+    //----Receivers:
 
     /**
      * @callback mReceiver
@@ -192,6 +325,8 @@ public class MainActivity extends Activity implements BluetoothListFragment.Sele
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
+
+            BluetoothListFragment fragment = getListFragment();
 
             //if broadcast is received and fragment is a list
             if (fragment instanceof BluetoothListFragment) {
@@ -293,8 +428,8 @@ public class MainActivity extends Activity implements BluetoothListFragment.Sele
                     //if accepted register bluetooth service
                     BluetoothController.registerBluetoothService();
 
-                    if (fragment != null) {
-                        fragment.lookForDevices();
+                    if (getListFragment() != null) {
+                        getListFragment().lookForDevices();
                     }
 
                 } else {
@@ -337,15 +472,6 @@ public class MainActivity extends Activity implements BluetoothListFragment.Sele
         }
     }
 
+    //---
 
-    //----
-
-    /**
-     * When app is closed, remove registers
-     */
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        unregisterReceiver(mReceiver);
-    }
 }
