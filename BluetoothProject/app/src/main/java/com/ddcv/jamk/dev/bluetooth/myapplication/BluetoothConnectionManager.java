@@ -292,8 +292,6 @@ public class BluetoothConnectionManager {
         }
     }
 
-
-
     /**
      * 1. create "BluetoothClien"-thread socket to the SelectedDevice
      * 2. send message to device
@@ -333,24 +331,90 @@ public class BluetoothConnectionManager {
 
     }
 
+    /**
+     * Receive messages from other device via bluetooth
+     * @param device
+     */
     public void getMessages(BluetoothDevice device){
         BluetoothClient_Listen listenThread = new BluetoothClient_Listen();
         listenThread.run();
     }
 
+    /**
+     * Check if device with $MAC has been found
+     * @param MAC Physical address of the device
+     * @return BluetoothDevice-object
+     */
+    public BluetoothDevice getDeviceWithMac(String MAC)
+    {
+        if(foundDevices.size() < 0)
+        {
+            //there are no found devices
+            return null;
+        }
+        else
+        {
+            if(foundDevices.containsKey(MAC)){
+                //Devices does exist!
+                return foundDevices.get(MAC);
+            }
+            else
+            {
+                //device does not exist
+                return null;
+            }
+        }
+    }
+
+
+
+    /**
+     * Check if connection to defined device can be created
+     * @param Device Target for connection
+     * @return true or false
+     */
+    public boolean testConnection(BluetoothDevice Device)
+    {
+        BluetoothClient client = new BluetoothClient(Device);
+        BluetoothSocket socket = client.mSocket;
+
+        boolean status;
+
+        if(client.mSocket == null)
+        {
+            status = false;
+        }
+        else if(client.getSocket().isConnected())
+        {
+
+            status = true;
+
+            //closes connection and returns the response
+            client.cancel();
+
+            return true;
+        }
+        else
+        {
+            status = false;
+        }
+
+        return status;
+    }
 
     //When connection to the device has been established:
 
     /**
      * @class   BluetoothClient     Connect as a client to bluetooth device
      */
-    public class BluetoothClient extends Thread {
+    public class BluetoothClient extends Thread
+    {
 
         /**
          * @member  mSocket     Socket that is used to communicate with the device
          * @member  mDevice     Device that is to be communicated with
          */
-        private final BluetoothSocket mSocket;
+        public final BluetoothSocket mSocket;
         private final BluetoothDevice mDevice;
 
         //Constructor
@@ -458,7 +522,8 @@ public class BluetoothConnectionManager {
     /**
      * @class   BluetoothClient_Listen     receive Bluetooth communication from other devices (act as a server)
      */
-    public class BluetoothClient_Listen extends Thread {
+    public class BluetoothClient_Listen extends Thread
+    {
 
         private final BluetoothServerSocket mServerSocket;
         private static final String NAME = "Android phone client";
@@ -513,7 +578,8 @@ public class BluetoothConnectionManager {
     /**
      * @class   BluetoothClient_Write     Manage connection between two devices
      */
-    public class BluetoothClient_Write extends Thread{
+    public class BluetoothClient_Write extends Thread
+    {
 
         /**
          * @member  mSocket         Contains target bluetoothsocket

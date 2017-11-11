@@ -111,45 +111,26 @@ public class MainActivity extends FragmentActivity implements BluetoothListFragm
 
             default:
                 BluetoothDeviceFragment deviceFragment = new BluetoothDeviceFragment();
-                deviceFragment.setBluetoothDevice(selectedDevice);
+
+                Bundle deviceBundle = new Bundle();
+                deviceBundle.putString("Address", selectedDevice.getAddress());
+                deviceBundle.putString("Name", selectedDevice.getName());
+                deviceBundle.putInt("Bond_Status", selectedDevice.getBondState());
+
+
+                //deviceBundle.putBoolean("Connection", BluetoothController.testConnection(selectedDevice));
+
+                deviceFragment.setArguments(deviceBundle);
 
                 getSupportFragmentManager().beginTransaction().replace(R.id.mainFragment, deviceFragment).commit();
+                getSupportFragmentManager().executePendingTransactions();
+
+
                 Log.i("Fragments", "Fragment changed!");
                 break;
         }
     }
 
-    /**
-     * @desc Find a fragment of type $fragmentClass
-     * @param fragmentClass Class that is under search
-     * @return null if not found, else return the found fragment
-     */
-    private android.support.v4.app.Fragment getFragmentWithType(Class fragmentClass){
-
-        List<android.support.v4.app.Fragment> getF = getSupportFragmentManager().getFragments();
-
-        boolean isFound = false;
-        int foundIndex = -1;
-
-        for(int i = 0; i < getF.size(); i++)
-        {
-            if(getF.get(i).getClass() == fragmentClass)
-            {
-                isFound = true;
-                foundIndex = i;
-                break;
-            }
-        }
-
-        if(isFound == true)
-        {
-            return getF.get(foundIndex);
-        }
-        else
-        {
-            return null;
-        }
-    }
 
     /**
      * case unBond:
@@ -271,7 +252,10 @@ public class MainActivity extends FragmentActivity implements BluetoothListFragm
         }
     }
 
-
+    /**
+     * Return the open BluetoothListFragment if one exists and is open
+     * @return
+     */
     public BluetoothListFragment getListFragment(){
 
         try {

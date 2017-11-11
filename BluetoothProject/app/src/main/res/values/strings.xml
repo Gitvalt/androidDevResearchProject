@@ -9,9 +9,15 @@
     <string name="Bonded_with">Bonded with device!</string>
     <string name="UnBonding">Unbonding...</string>
     <string name="Unbonded">Unbonded</string>
+    <string name="unkown_status">Status is unkown</string>
+
+    <string name="conn_available">Connection is available</string>
+    <string name="conn_unavailable">Connection is not available</string>
+    <string name="conn_testing">Testing if connection can be created</string>
 
     <string name="Unavailable">Unavailable</string>
     <string name="error_bonding">Bonding error!</string>
+    <string name="refresh">Refresh</string>
 
     <string name="conn_status">Connection status</string>
     <string name="connect_to">Connect to device</string>
