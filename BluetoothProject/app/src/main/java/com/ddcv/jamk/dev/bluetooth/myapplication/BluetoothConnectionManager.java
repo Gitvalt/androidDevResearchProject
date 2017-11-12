@@ -15,7 +15,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Message;
+import android.print.PrintJob;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.PermissionChecker;
 import android.support.v4.util.ArrayMap;
@@ -26,6 +28,7 @@ import android.widget.Toast;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.util.Set;
 import java.util.UUID;
 
@@ -47,8 +50,10 @@ public class BluetoothConnectionManager {
     private Context mContext;
     private Activity mActivity;
     private BroadcastReceiver mReceiver;
+
     public ArrayMap<String, BluetoothDevice> foundDevices;
     public BluetoothAdapter mBluetoothAdapter;
+
     private static final int mScanningTimeout = 20; //As in 20 seconds
     private final UUID myUUID = UUID.fromString("94f39d29-7d6d-437d-973b-fba39e49d4ee");
 
@@ -87,7 +92,7 @@ public class BluetoothConnectionManager {
      */
     public void setBluetoothEnabled(boolean setState){
 
-
+        //true -> turn bluetooth on
         if(setState)
         {
             //if bluetooth is wanted to be activated
@@ -103,6 +108,7 @@ public class BluetoothConnectionManager {
                 //A request to turn on bluetooth is sent --> MainActivity onActivityResult
             }
         }
+        //false -> turn bluetooth off
         else
         {
             //if bluetooth is wanted to be shut down
@@ -402,6 +408,33 @@ public class BluetoothConnectionManager {
         return status;
     }
 
+
+    public BluetoothSocket getBluetoothSocket(BluetoothDevice device)
+    {
+        BluetoothClient thread = new BluetoothClient(device);
+        thread.run();
+        return thread.mSocket;
+    }
+
+
+
+
+    public void listenForMessages(BluetoothDevice dev, final Handler mainHandler)
+    {
+        final BluetoothDevice device = dev;
+        Handler handler = new Handler();
+
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run()
+            {
+                BluetoothMessagingClient messagingClient = new BluetoothMessagingClient(device, mainHandler);
+                messagingClient.run();
+            }
+        };
+        handler.post(runnable);
+    }
+
     //When connection to the device has been established:
 
     /**
@@ -414,12 +447,14 @@ public class BluetoothConnectionManager {
          * @member  mSocket     Socket that is used to communicate with the device
          * @member  mDevice     Device that is to be communicated with
          */
-        public final BluetoothSocket mSocket;
+        private final BluetoothSocket mSocket;
         private final BluetoothDevice mDevice;
 
         //Constructor
         public BluetoothClient(BluetoothDevice device)
         {
+            mBluetoothAdapter.cancelDiscovery();
+
             BluetoothSocket tmp = null;
 
             try {   tmp = device.createRfcommSocketToServiceRecord(myUUID);  }
@@ -518,6 +553,117 @@ public class BluetoothConnectionManager {
         }
     }
 
+    public class BluetoothMessagingClient extends Thread
+    {
+        private BluetoothServerSocket mServerSocket;
+        private BluetoothDevice mDevice;
+        private Handler handler;
+
+        private BluetoothSocket client;
+
+
+
+        private  InputStream mInputStream;
+        private  OutputStream mOutputStream;
+        private byte[] mBuffer;
+
+        public BluetoothMessagingClient(BluetoothDevice device, Handler handler1) {
+            mDevice = device;
+
+            try
+            {
+                mServerSocket = mBluetoothAdapter.listenUsingRfcommWithServiceRecord("BluetoothApp", myUUID);
+            }
+            catch (IOException ioE)
+            {
+                Log.e("Bluetooth", "Creating socket for communication has failed");
+            }
+            finally {
+                handler = handler1;
+            }
+
+        }
+
+        @Override
+        public void run() {
+            if(mServerSocket != null)
+            {
+                try
+                {
+
+                    while(true)
+                    {
+                        //when device connects to this device, create a client
+                        Log.i("Bluetooth", "getting accetps");
+                        client =  mServerSocket.accept();
+                        Log.i("Bluetooth", "Got client");
+
+                        if(client.getRemoteDevice().getAddress().equals(mDevice.getAddress()))
+                        {
+                            //target found, stop listening for new communication
+                            //mServerSocket.close();
+                            mInputStream = client.getInputStream();
+                            mOutputStream = client.getOutputStream();
+
+                            mBuffer = new byte[1024];
+                            int numBytes;
+
+                            while(true){
+                                try {
+                                    numBytes = mInputStream.read(mBuffer);
+
+                                    /**
+                                     * @param {int}     arg1    What is received
+                                     * @param {int}     arg2
+                                     * @param {int}     arg3
+                                     * @param {byte[]}  arg4    The message
+                                     */
+                                    String response = new String(mBuffer, Charset.forName("UTF-8"));
+                                    Message mMessage = handler.obtainMessage(10, numBytes, -1, mBuffer);
+                                    mMessage.sendToTarget();
+
+                                } catch (IOException e){
+                                    Log.e("Bluetooth_error", "Error with reading data", e);
+                                    break;
+                                }
+                            }
+
+                        }
+                        else
+                        {
+                            //if remote device is not the one we are looking for, then refuse to listen.
+                            client = null;
+                        }
+                    }
+
+                }
+                catch (IOException ie)
+                {
+                    Log.e("Bluetooth", "Accepting bluetooth communication has failed!!");
+                    Log.e("Bluetooth", ie.getMessage());
+                }
+            }
+        }
+
+        public void write()
+        {
+
+        }
+
+        public void cancel(){
+            try {
+                if(client.isConnected())
+                {
+                    client.close();
+                    mServerSocket.close();
+                }
+            }
+            catch (IOException ioError)
+            {
+                Log.e("Bluetooth", "Could not close socket: " + ioError.getMessage());
+            }
+        }
+    }
 
     /**
      * @class   BluetoothClient_Listen     receive Bluetooth communication from other devices (act as a server)
@@ -529,6 +675,8 @@ public class BluetoothConnectionManager {
         private static final String NAME = "Android phone client";
 
         public BluetoothClient_Listen() {
+
+
 
             BluetoothServerSocket tmp = null;
             try
@@ -589,8 +737,8 @@ public class BluetoothConnectionManager {
          * @member  mHandler        Handle data reading
          */
         private final BluetoothSocket mSocket;
-        private final InputStream mInputStream;
-        private final OutputStream mOutputStream;
+        private  InputStream mInputStream;
+        private  OutputStream mOutputStream;
         private byte[] mBuffer;
         private android.os.Handler mHandler;
 
@@ -599,6 +747,9 @@ public class BluetoothConnectionManager {
          * @param       "socket"        Socket assigned to communicate with specified device
          */
         public BluetoothClient_Write(BluetoothSocket socket) {
+
+            mBluetoothAdapter.cancelDiscovery();
+
             mSocket = socket;
             InputStream tmpIn = null;
             OutputStream tmpOut = null;
@@ -649,7 +800,7 @@ public class BluetoothConnectionManager {
                      * @param {int}     arg3
                      * @param {byte[]}  arg4    The message
                      */
-                    Message mMessage = mHandler.obtainMessage(0, numBytes, -1, mBuffer);
+                    Message mMessage = mHandler.obtainMessage(10, numBytes, -1, mBuffer);
 
                     mMessage.sendToTarget();
 
@@ -695,5 +846,7 @@ public class BluetoothConnectionManager {
             }
         }
     }
+
+
 
 }

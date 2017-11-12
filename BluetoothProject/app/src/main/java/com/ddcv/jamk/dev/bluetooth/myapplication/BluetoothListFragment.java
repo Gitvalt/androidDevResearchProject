@@ -1,5 +1,6 @@
 package com.ddcv.jamk.dev.bluetooth.myapplication;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.ListFragment;
@@ -51,9 +52,11 @@ public class BluetoothListFragment extends android.support.v4.app.Fragment imple
 
     public SelectionListener callback;
 
+    //Class interfaces:
     public interface SelectionListener {
         void setSelectedDevice(BluetoothDevice selectedDevice, BluetoothConnectionManager.DeviceAction action);
     }
+
 
 
     /**
@@ -66,15 +69,17 @@ public class BluetoothListFragment extends android.support.v4.app.Fragment imple
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
-        //setup inflater
+        //setup the fragment view
         View view = inflater.inflate(R.layout.bluetooth_list_fragment, container, false);
 
         //setup progressbar for scanning devices
         spinningCircle = (ProgressBar)view.findViewById(R.id.progressBar);
 
+        //Setup the buttons
         FloatingActionButton button_refs = (FloatingActionButton)view.findViewById(R.id.refreshButton);
         FloatingActionButton button_return = (FloatingActionButton)view.findViewById(R.id.exitButton);
 
+        //Onclick setup:
         button_refs.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -99,25 +104,27 @@ public class BluetoothListFragment extends android.support.v4.app.Fragment imple
         layoutManager = new LinearLayoutManager(getActivity().getApplicationContext());
 
         deviceList.setLayoutManager(layoutManager);
-
-        setBluetoothManager((MainActivity)getActivity(), (MainActivity)getActivity());
-
         return view;
     }
+
 
 
     /**
      * After fragment has been created, add reference to parent activity
      * @param activity  the main activity that has create this fragment
      */
-    public void setBluetoothManager(MainActivity activity, SelectionListener callbackFunction)
+    public void setBluetoothManager(Activity activity, SelectionListener callbackFunction)
     {
-        mainActivity = activity;
-        DeviceAdapter deviceListAdapter = new DeviceAdapter(activity.getBluetoothController().foundDevices, this);
-        deviceList.setAdapter(deviceListAdapter);
 
-        this.callback = callbackFunction;
-        mainActivity.enableBluetooth();
+        if(getActivity().getClass() == MainActivity.class)
+        {
+            mainActivity = (MainActivity)activity;
+            DeviceAdapter deviceListAdapter = new DeviceAdapter(((MainActivity) activity).getBluetoothController().foundDevices, this);
+            deviceList.setAdapter(deviceListAdapter);
+
+            this.callback = callbackFunction;
+            mainActivity.enableBluetooth();
+        }
     }
 
 
@@ -130,7 +137,7 @@ public class BluetoothListFragment extends android.support.v4.app.Fragment imple
 
         boolean isListEmpty = foundDevices.isEmpty();
 
-        //Empty list
+        //Empty the list
         if(!isListEmpty)
         {
             foundDevices.clear();
@@ -150,6 +157,7 @@ public class BluetoothListFragment extends android.support.v4.app.Fragment imple
         public void onRefreshListClick(View parent){
 
             Log.i("Bluetooth", "Finding new devices");
+
             mainActivity.getBluetoothController().FindNewDevices();
 
         }
@@ -200,7 +208,12 @@ public class BluetoothListFragment extends android.support.v4.app.Fragment imple
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
+    }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+        setBluetoothManager((MainActivity)getActivity(), (MainActivity)getActivity());
     }
 
 

@@ -40,10 +40,12 @@ public class BluetoothDeviceFragment extends android.support.v4.app.Fragment {
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.bluetooth_device_fragment, container, false);
 
+        //setup UI elements
         deviceAddress = view.findViewById(R.id.deviceName);
         deviceBondStatus = view.findViewById(R.id.deviceStatus);
         deviceConnectionStatus = view.findViewById(R.id.connectionStatus);
 
+        //setup device name
         String deviceName = getArguments().getString("Name");
 
         if(deviceName == null)
@@ -56,6 +58,7 @@ public class BluetoothDeviceFragment extends android.support.v4.app.Fragment {
         }
 
 
+        //setup current device to device bluetooth bond status
         int bondStatus = getArguments().getInt("Bond_Status");
         int bondStatus_text;
 
@@ -76,17 +79,37 @@ public class BluetoothDeviceFragment extends android.support.v4.app.Fragment {
 
         deviceBondStatus.setText(bondStatus_text);
 
+        //setup "try connecting to device"-button
         Button button = (Button) view.findViewById(R.id.retry_connection_button);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                deviceConnectionStatus.setText(R.string.conn_testing);
-                reloadConnectionStatus();
+                executeReload();
             }
         });
 
-        deviceConnectionStatus.setText(R.string.conn_testing);
-        reloadConnectionStatus();
+        //onclick change fragment to messaging fragment
+        Button messagingButton = (Button)view.findViewById(R.id.messaging_button);
+        messagingButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(getActivity().getClass() == MainActivity.class)
+                {
+                    MainActivity activity = (MainActivity)getActivity();
+                    BluetoothMessagingFragment messagingFragment = new BluetoothMessagingFragment();
+
+                    Bundle data = new Bundle();
+                    data.putString("DeviceMAC", getArguments().getString("Address"));
+
+                    messagingFragment.setArguments(data);
+
+                    activity.changeMainFragment(messagingFragment);
+                }
+            }
+        });
+
+
+        executeReload();
 
         return view;
     }
@@ -115,6 +138,9 @@ public class BluetoothDeviceFragment extends android.support.v4.app.Fragment {
             final String deviceMAC = getArguments().getString("Address");
             final BluetoothDevice device = manager.getDeviceWithMac(deviceMAC);
 
+            boolean connResponse = manager.testConnection(device);
+            setConnectionStatus(connResponse);
+            /*
             Handler handler = new Handler();
 
             handler.post(new Runnable() {
@@ -124,7 +150,25 @@ public class BluetoothDeviceFragment extends android.support.v4.app.Fragment {
                     setConnectionStatus(connResponse);
                 }
             });
+            */
         }
+    }
+
+    private void executeReload()
+    {
+        deviceConnectionStatus.setText(R.string.conn_testing);
+
+        Handler handler = new Handler();
+
+        handler.post(new Runnable() {
+            @Override
+            public void run()
+            {
+                reloadConnectionStatus();
+            }
+        });
+
+        return;
     }
 
     @Override
@@ -132,6 +176,8 @@ public class BluetoothDeviceFragment extends android.support.v4.app.Fragment {
         super.onAttach(context);
     }
 
-
-
+    @Override
+    public Object getExitTransition() {
+        return super.getExitTransition();
+    }
 }

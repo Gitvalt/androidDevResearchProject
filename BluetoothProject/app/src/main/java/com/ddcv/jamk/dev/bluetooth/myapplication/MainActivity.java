@@ -66,17 +66,11 @@ public class MainActivity extends FragmentActivity implements BluetoothListFragm
 
         BluetoothController = new BluetoothConnectionManager(getApplicationContext(), this, mReceiver);
 
+        //create and add BluetoothListFragment to the Frame-object
         BluetoothListFragment defaultFragment = new BluetoothListFragment();
-
         mainDisplay = (FrameLayout)findViewById(R.id.mainFragment);
         getSupportFragmentManager().beginTransaction().add(R.id.mainFragment, defaultFragment).addToBackStack(null).commit();
         getSupportFragmentManager().executePendingTransactions();
-
-        List<android.support.v4.app.Fragment> getFragment = getSupportFragmentManager().getFragments();
-        android.support.v4.app.Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.mainFragment);
-        BluetoothListFragment list = (BluetoothListFragment)fragment;
-
-        fragment = (BluetoothListFragment)getSupportFragmentManager().findFragmentById(R.id.mainFragment);
 
         //enableBluetooth();
     }
@@ -131,43 +125,12 @@ public class MainActivity extends FragmentActivity implements BluetoothListFragm
         }
     }
 
-
-    /**
-     * case unBond:
-     Log.i("Bluetooth", "Breaking bond with device '" + selectedDevice.getName() + "' at " + selectedDevice.getAddress());
-     try {
-     Method m = selectedDevice.getClass().getMethod("removeBond", (Class[]) null);
-     m.invoke(selectedDevice, (Object[]) null);
-
-     AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
-     builder.setTitle("Warning");
-     builder.setMessage("Currently only the phone is unpaired. Other device still thinks there is a connection. For reconnection remove pairing manually from other device");
-     builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-    @Override public void onClick(DialogInterface dialogInterface, int i) {
-
+    public void changeMainFragment(android.support.v4.app.Fragment target)
+    {
+        Class init_fragment = getSupportFragmentManager().findFragmentById(R.id.mainFragment).getClass();
+        getSupportFragmentManager().beginTransaction().replace(R.id.mainFragment, target).commit();
+        Log.i("Fragment_transition", String.format("Fragment has been changed from '{0}' to '{1}'", init_fragment, target.getClass()));
     }
-    });
-
-     AlertDialog alert = builder.create();
-     alert.show();
-
-     }
-     catch(Exception e)
-     {
-     Log.e("Bluetooth error", "Removing bond failed");
-     }
-     break;
-     case connect:
-     //BluetoothController.sendMessage("Hello server!", selectedDevice);
-     getBluetoothController().getMessages(selectedDevice);
-
-     break;
-
-     //sends a message to the bluetooth device
-     case message:
-     //BluetoothController.sendMessage("Hello server!", selectedDevice);
-     break;
-     */
 
     /**
      *@desc Activate phone's bluetooth if available
@@ -182,6 +145,7 @@ public class MainActivity extends FragmentActivity implements BluetoothListFragm
                 //Bluetooth is not supported
                 Log.e("Bluetooth", "Bluetooth is not supported by this device");
 
+                //create alert dialog
                 AlertDialog.Builder alert = new AlertDialog.Builder(this);
                 alert.setTitle("Bluetooth not supported");
                 alert.setMessage("I guess this phone cannot use Bluetooth..." + "\n" + "\n" + "Hint: Android emulator cannot emulate bluetooth, use real phone instead");
@@ -195,12 +159,14 @@ public class MainActivity extends FragmentActivity implements BluetoothListFragm
                 });
                 AlertDialog dialog = alert.create();
 
+                //show error
                 dialog.show();
             }
+
+            //bluetooth is supported
             else
             {
 
-                //bluetooth is supported
                 Log.i("Bluetooth", "Bluetooth is implemented!");
                 boolean isEnabled = BluetoothController.mBluetoothAdapter.isEnabled();
 
@@ -218,8 +184,15 @@ public class MainActivity extends FragmentActivity implements BluetoothListFragm
                 }
                 else
                 {
-                    BluetoothController.setBluetoothEnabled(true);
-                    Log.i("Bluetooth_status", "Bluetooth is not Enabled");
+                    try
+                    {
+                        BluetoothController.setBluetoothEnabled(true);
+                        Log.i("Bluetooth_status", "Bluetooth is not Enabled");
+                    }
+                    catch (Exception e)
+                    {
+                        Log.e("Bluetooth", "Fatal bluetooth enable error!");
+                    }
                 }
 
             }

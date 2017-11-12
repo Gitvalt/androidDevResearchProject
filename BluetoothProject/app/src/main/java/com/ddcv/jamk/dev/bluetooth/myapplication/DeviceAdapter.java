@@ -19,10 +19,8 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
      * @member  deviceArrayMap   Map of found devices
      */
     private ArrayMap<String, BluetoothDevice> deviceArrayMap;
+
     public DeviceListener callback;
-
-
-
     public interface DeviceListener {
         void selectDevice(BluetoothDevice selectedDevice, BluetoothConnectionManager.DeviceAction action);
     }
