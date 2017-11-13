@@ -2,6 +2,7 @@ package com.ddcv.jamk.dev.bluetooth.myapplication;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.os.Bundle;
@@ -84,7 +85,18 @@ public class MsgActivity extends AppCompatActivity {
         } catch (Exception e) {Log.v("bluetooth", "Could not send message");}
     }
 
-
+    public void serverBluetooth(View v)
+    {
+        try
+        {
+            ActAsServerThread thread = new ActAsServerThread(mmDevice);
+            thread.run();
+        }
+        catch (Exception e)
+        {
+            Log.e("Error", "Unkown error", e);
+        }
+    }
 
     private class ConnectThread extends Thread {
         private BluetoothSocket mmSocket;
@@ -192,6 +204,112 @@ public class MsgActivity extends AppCompatActivity {
         public void cancel() {
             try {
                 mmSocket.close();
+            } catch (IOException e) {
+                Log.e(TAG, "Could not close the client socket", e);
+            }
+        }
+    }
+
+    private class ActAsServerThread extends Thread {
+        private BluetoothServerSocket mmServerSocket;
+        private BluetoothDevice mmDevice;
+        private OutputStream mmOutStream;
+        private InputStream mmInStream;
+
+        public boolean isConnected;
+        private byte[] buffer = new byte[2048];
+
+        /**
+         * Thread constructor
+         * @desc
+         * For 10 times try to create socket and connect to the device, retrieve input- and output-streams.
+         * if fails then wait for 0.5 seconds and try again.
+         * @param device The device that is to be connected to.s
+         */
+        public ActAsServerThread(BluetoothDevice device) {
+
+            BluetoothServerSocket tmp = null;
+            mmDevice = device;
+            mmOutStream = null;
+            isConnected = false;
+
+            for (int i = 0; i < 10; i++)
+            {
+                try
+                {
+                    // Get a BluetoothSocket to connect with the given BluetoothDevice.
+                    // MY_UUID is the app's UUID string, also used in the server code.
+                    tmp = mBluetoothAdapter.listenUsingRfcommWithServiceRecord("ServerApp", myUUID);
+                    mmServerSocket = tmp;
+                    break;
+                }
+                catch (IOException e)
+                {
+                    Log.e(TAG, "Socket's create() method failed", e);
+                    try
+                    {
+                        Thread.sleep(500);
+                    }
+                    catch (Exception e2)
+                    {
+                        Log.e("Thread sleep", "Setting thread to sleep has failed");
+                    }
+
+                }
+            }
+
+            if (!isConnected) {Log.v(TAG, "Couldn't create BT Socket (there is no server)");}
+        }
+
+        public void run() {
+            try {
+                mBluetoothAdapter.cancelDiscovery();
+                BluetoothSocket mSocket;
+
+                while (true) {
+                    mSocket = mmServerSocket.accept();
+                    mmServerSocket.close();
+                    listenFor(mSocket);
+                }
+            }
+            catch (IOException ioExoection)
+            {
+                Log.e("IOEXECPTION", "Accepting new connection has failed", ioExoection);
+            }
+        }
+
+        public void listenFor(BluetoothSocket socket)
+        {
+            try
+            {
+                mmInStream = socket.getInputStream();
+                mmOutStream = socket.getOutputStream();
+
+                while(true)
+                {
+                    //read data
+                    int response = mmInStream.read(buffer);
+
+                    //parse byte data
+                    String responseStr = new String(buffer, 0, response);
+
+                    if(buffer.length != 0)
+                    {
+
+                    }
+                }
+
+            }
+            catch (IOException ioe)
+            {
+
+            }
+        }
+
+        // Closes the client socket and causes the thread to finish.
+        public void cancel() {
+            try {
+                mmServerSocket.close();
             } catch (IOException e) {
                 Log.e(TAG, "Could not close the client socket", e);
             }
