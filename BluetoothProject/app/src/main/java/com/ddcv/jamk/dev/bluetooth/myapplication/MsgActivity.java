@@ -94,6 +94,13 @@ public class MsgActivity extends AppCompatActivity {
         public boolean isConnected;
         private byte[] buffer = new byte[2048];
 
+        /**
+         * Thread constructor
+         * @desc
+         * For 10 times try to create socket and connect to the device, retrieve input- and output-streams.
+         * if fails then wait for 0.5 seconds and try again.
+         * @param device The device that is to be connected to.s
+         */
         public ConnectThread(BluetoothDevice device) {
             // Use a temporary object that is later assigned to mmSocket
             // because mmSocket is final.
@@ -101,8 +108,10 @@ public class MsgActivity extends AppCompatActivity {
             mmDevice = device;
             mmOutStream = null;
             isConnected = false;
-            for (int i = 0; i < 10; i++) {
-                try {
+            for (int i = 0; i < 10; i++)
+            {
+                try
+                {
                     // Get a BluetoothSocket to connect with the given BluetoothDevice.
                     // MY_UUID is the app's UUID string, also used in the server code.
                     tmp = device.createRfcommSocketToServiceRecord(myUUID);
@@ -114,11 +123,17 @@ public class MsgActivity extends AppCompatActivity {
                     getInputstream();
                     isConnected = true;
                     break;
-                } catch (IOException e) {
+                }
+                catch (IOException e)
+                {
                     Log.e(TAG, "Socket's create() method failed", e);
-                    try {
+                    try
+                    {
                         Thread.sleep(500);
-                    } catch (Exception e2) {
+                    }
+                    catch (Exception e2)
+                    {
+                        Log.e("Thread sleep", "Setting thread to sleep has failed");
                     }
 
                 }
@@ -130,12 +145,19 @@ public class MsgActivity extends AppCompatActivity {
             mBluetoothAdapter.cancelDiscovery();
         }
 
+        /**
+         * Send message through the mmSocket to the device and listen for response
+         */
         public void sendMessage() {
             if (isConnected) {
                 try {
                     EditText message = (EditText) findViewById(R.id.editText2);
                     byte[] send = message.getText().toString().getBytes();
+
+                    //send the information
                     mmOutStream.write(send);
+
+                    //start listening for response
                     getInputstream();
 
                 } catch (IOException e) {
@@ -144,13 +166,23 @@ public class MsgActivity extends AppCompatActivity {
             }
         }
 
+        /**
+         * listen for communication from the device
+         */
         public void getInputstream() {
             try {
+                //read data
                 int response = mmInStream.read(buffer);
+
+                //parse byte data
                 String responseStr = new String(buffer, 0, response);
+
+                //display parsed response
                 TextView resp_textview = (TextView)findViewById(R.id.response);
                 resp_textview.setText(responseStr);
-            } catch (IOException e) {
+            }
+            catch (IOException e)
+            {
                 Log.e(TAG, "Couldn't recieve msg", e);
             }
         }

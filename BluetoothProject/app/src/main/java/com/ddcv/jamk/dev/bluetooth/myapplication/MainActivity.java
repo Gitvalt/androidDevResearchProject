@@ -144,11 +144,26 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
             deviceList.getAdapter().notifyDataSetChanged();
         }
 
-        BluetoothController.FindNewDevices();
+        BluetoothController.FindDevices();
         //program continues in "BroadcastReceiver.ActionDiscovery_finished"
     }
 
 
+    /**
+     * When app is closed, remove registers
+     */
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try
+        {
+            unregisterReceiver(mReceiver);
+        }
+        catch (IllegalArgumentException args)
+        {
+            Log.e("Receiver", "Cannot unregister a service that is already unregistered");
+        }
+    }
 
 
     //onClick functions:
@@ -157,10 +172,8 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
      * Clear list, search new devices
      */
     public void onRefreshListClick(View parent){
-        /*
         Log.i("Bluetooth", "Finding new devices");
-        BluetoothController.FindNewDevices();
-        */
+        BluetoothController.FindDevices();
     }
 
     /**
@@ -198,10 +211,12 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
                     Log.i("Bluetooth_broadcast", "staring discovery...");
                     spinningCircle.setVisibility(View.VISIBLE);
                     break;
+
                 case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
                     Log.i("Bluetooth_broadcast", "discovery fisihed");
                     spinningCircle.setVisibility(View.INVISIBLE);
                     break;
+
                 case BluetoothDevice.ACTION_FOUND:
                     //bluetooth device is found.
 
@@ -217,6 +232,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
 
                     Log.i("Bluetooth_broadcast", "Bluetooth device detected!");
                     break;
+
                 case BluetoothDevice.ACTION_BOND_STATE_CHANGED:
 
                     Log.i("state_changed", "state has changed!");
@@ -252,7 +268,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode){
             case ALLOW_BLUETOOTH_CODE:
-                BluetoothController.FindNewDevices();
+                BluetoothController.FindDevices();
                 break;
             default:
                 break;
@@ -310,7 +326,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
 
             case ALLOW_BLUETOOTH_CODE:
                 if (resultCode == RESULT_OK) {
-                    BluetoothController.FindNewDevices();
+                    BluetoothController.FindDevices();
                 } else {
                     //bluetooth off
                     Toast.makeText(getApplicationContext(), "Bluetooth access permission denied", Toast.LENGTH_SHORT).show();
@@ -321,24 +337,28 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         }
     }
 
-    //----
+
 
 
     //Handling recycler view events:
     /**
-     * Get callback from DeviceAdapter and execute pairing
+     * Found device from the list is long clicked selected. Get callback from DeviceAdapter and execute pairing
      */
     @Override
     public void selectDevice(BluetoothDevice selectedDevice, BluetoothConnectionManager.DeviceAction action) {
-        Log.i("Bluetooth", "Item has been selected + " + action);
-        Toast.makeText(getApplicationContext(), "Got interface", Toast.LENGTH_SHORT).show();
 
-        switch (action){
+        Log.i("Bluetooth", "Item has been selected + " + action);
+        Toast.makeText(getApplicationContext(), "Received a callback from adapter type: " + action, Toast.LENGTH_SHORT).show();
+
+        switch (action)
+        {
+            //create a bond between the devices
             case Bond:
                 Log.i("Bluetooth", "Bonding with device '" + selectedDevice.getName() + "' at " + selectedDevice.getAddress());
                 selectedDevice.createBond();
                 break;
 
+            //currently is not used
             case unBond:
                 Log.i("Bluetooth", "Breaking bond with device '" + selectedDevice.getName() + "' at " + selectedDevice.getAddress());
                 try {
@@ -364,16 +384,13 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
                     Log.e("Bluetooth error", "Removing bond failed");
                 }
                 break;
+
+            //when phone has already been bonded, start MSGActivity
             case connect:
-                //BluetoothController.sendMessage("Hello server!", selectedDevice);
-                BluetoothController.getMessages(selectedDevice);
-
+                //start MSGActivity
+                startMsgActivity();
                 break;
 
-            //sends a message to the bluetooth device
-            case message:
-                //BluetoothController.sendMessage("Hello server!", selectedDevice);
-                break;
         }
 
     }
@@ -383,10 +400,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
      */
     private void updateDeviceList(){
 
-
-        //deviceList.setAdapter(mAdapter);
         ArrayMap<String, BluetoothDevice> foundDevices = BluetoothController.foundDevices;
-
 
         if(foundDevices == null)
         {
@@ -407,21 +421,57 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         }
     }
 
-    public void startMsgActivity(View view) {
-        Intent intent = new Intent(this, MsgActivity.class);
+    /**
+     * Onbuttonclick --> Start the MsgActivity
+     * @param view
+     */
+    public void onClick_startMsgActivity(View view) {
         TextView mactext = (TextView) findViewById(R.id.selectedMac);
-        intent.putExtra(EXTRA_MESSAGE, mactext.getText().toString());
-        startActivity(intent);
-    }
+        String physical_address = (String) mactext.getText();
 
-    //----
+        if(mactext.getText() == null)
+        {
+            Log.e("Open_Activity", "Cannot open msg activity. MAC is empty!");
+            Toast.makeText(getApplicationContext(), "Cannot open device activity. No device selected", Toast.LENGTH_LONG).show();
+        }
+        else
+        {
+            //VALIDATE ADDRESS
+            if(BluetoothAdapter.checkBluetoothAddress(physical_address))
+            {
+                Intent intent = new Intent(this, MsgActivity.class);
+                intent.putExtra(EXTRA_MESSAGE, mactext.getText().toString());
+                startActivity(intent);
+            }
+
+            //ADDRESS NOT VALID
+            else
+            {
+                Log.e("Open_Activity", "Cannot open msg activity. MAC is not in valid format!");
+                Toast.makeText(getApplicationContext(), "Cannot open device activity. Device address is invalid", Toast.LENGTH_LONG).show();
+            }
+
+
+        }
+    }
 
     /**
-     * When app is closed, remove registers
+     * Onbuttonclick --> Start the MsgActivity
      */
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        unregisterReceiver(mReceiver);
+    public void startMsgActivity() {
+        TextView mactext = (TextView) findViewById(R.id.selectedMac);
+
+        if(mactext.getText() == null)
+        {
+            Log.e("Open_Activity", "Cannot open msg activity. MAC is empty!");
+            Toast.makeText(getApplicationContext(), "Cannot open device activity. No device selected", Toast.LENGTH_LONG).show();
+        }
+        else
+        {
+            Intent intent = new Intent(this, MsgActivity.class);
+            intent.putExtra(EXTRA_MESSAGE, mactext.getText().toString());
+            startActivity(intent);
+        }
     }
+
 }

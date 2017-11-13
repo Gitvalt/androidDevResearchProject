@@ -24,7 +24,6 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
     public Activity activity;
 
 
-
     public interface DeviceListener {
         void selectDevice(BluetoothDevice selectedDevice, BluetoothConnectionManager.DeviceAction action);
     }
@@ -91,17 +90,22 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
             deviceStatus = (TextView)itemView.findViewById(R.id.Status);
             selectedMac = (TextView) activity.findViewById(R.id.selectedMac);
 
+            /**
+             * On short click update the "selectMac"-textbox
+             */
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     BluetoothDevice selectedClickDevice = deviceArrayMap.valueAt(getAdapterPosition());
                     selectedMac.setText(selectedClickDevice.getAddress());
-
-
+                    selectedMac.setVisibility(View.VISIBLE);
                 }
 
             });
 
+            /**
+             * On long click open the msgActivity
+             */
             itemView.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
                 public boolean onLongClick(View v) {
@@ -109,6 +113,10 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
                     Log.w("Got CLICK", "We received a long click from you! At position " + getAdapterPosition());
 
                     BluetoothDevice selectedDevice = deviceArrayMap.valueAt(getAdapterPosition());
+
+                    selectedMac.setText(selectedDevice.getAddress());
+                    selectedMac.setVisibility(View.VISIBLE);
+
                     boolean continueActions = true;
                     BluetoothConnectionManager.DeviceAction action = null;
 

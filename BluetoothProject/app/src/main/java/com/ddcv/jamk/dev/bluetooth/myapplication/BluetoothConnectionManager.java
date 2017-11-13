@@ -4,28 +4,17 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothServerSocket;
-import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.Message;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.PermissionChecker;
 import android.support.v4.util.ArrayMap;
 import android.util.Log;
-import android.view.View;
-import android.widget.Toast;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Set;
 import java.util.UUID;
 
@@ -179,7 +168,7 @@ public class BluetoothConnectionManager {
      * Check if current devices has given permission for the app use bluetooth
      * @return  (true or false)
      */
-    private boolean FindNewDevices_permissions(){
+    private boolean FindDevices_permissions(){
         //check if app has permission to use Bluetooth (X >= Android 6.0)
         int selfPermission = PermissionChecker.checkSelfPermission(mContext.getApplicationContext(), Manifest.permission.BLUETOOTH);
         int adminPermission = PermissionChecker.checkSelfPermission(mContext.getApplicationContext(), Manifest.permission.BLUETOOTH_ADMIN);
@@ -238,38 +227,36 @@ public class BluetoothConnectionManager {
     /**
      * Check permissions for detecting bluetooth devices and start scanning
      */
-    public void FindNewDevices() {
+    public void FindDevices() {
+
 
         final android.os.Handler handler = new android.os.Handler();
 
+        //empty the list of found devices
+        foundDevices.clear();
+
         //check necessary permissions
-        boolean hasPermissions = FindNewDevices_permissions();
+        boolean hasPermissions = FindDevices_permissions();
 
-        if(hasPermissions) {
-
-            /**
-             * start searching devices
-             */
+        //have the permissions been given
+        if(hasPermissions)
+        {
+            //Start looking for devices
             if(mBluetoothAdapter.getState() == BluetoothAdapter.STATE_ON)
             {
                 //handle reading bonded devices
                 if(getPairedDevices().size() > 0)
                 {
-                    for(BluetoothDevice bluetoothDevice : getPairedDevices()){
-                        if(foundDevices.containsValue(bluetoothDevice)){
-                            //do nothing (no duplicates)
-                        }
-                        else {
-                            //add paired device to found devices
-                            foundDevices.put(bluetoothDevice.getAddress(), bluetoothDevice);
-                        }
+                    for(BluetoothDevice foundDevice : getPairedDevices())
+                    {
+                        foundDevices.put(foundDevice.getAddress(), foundDevice);
                     }
                 }
 
                 //start looking for devices
                 mBluetoothAdapter.startDiscovery();
 
-                //close search after {mScanningTimeout} time (in seconds)
+                //close search after {mScanningTimeout} time (in seconds) has passed
                 long time = mScanningTimeout * 1000;
                 handler.postDelayed(new Runnable() {
                     @Override
@@ -288,343 +275,4 @@ public class BluetoothConnectionManager {
             Log.i("Bluetooth", "Permissions have not been given");
         }
     }
-
-
-
-    /**
-     * 1. create "BluetoothClien"-thread socket to the SelectedDevice
-     * 2. send message to device
-     *
-     * @param message
-     * @param mDevice
-     */
-    public void sendMessage(String message, BluetoothDevice mDevice){
-
-        mBluetoothAdapter.cancelDiscovery();
-
-        //create the socket for communication
-        BluetoothClient thread = new BluetoothClient(mDevice);
-
-        thread.run();
-
-        //for testing
-        BluetoothSocket socket = thread.getSocket();
-
-        if(!thread.mSocket.isConnected())
-        {
-            Log.e("Bluetooth", "Socket connection that should be open, is not open!");
-            return;
-        }
-        else
-        {
-            BluetoothClient_Write thread1 = new BluetoothClient_Write(thread.mSocket);
-            thread1.start();
-
-            byte[] values = message.getBytes();
-            thread1.write(values);
-            thread1.cancel();
-        }
-
-        //closing threads
-        thread.cancel();
-
-    }
-
-    public void getMessages(BluetoothDevice device){
-        BluetoothClient_Listen listenThread = new BluetoothClient_Listen();
-        listenThread.run();
-    }
-
-
-    //When connection to the device has been established:
-
-    /**
-     * @class   BluetoothClient     Connect as a client to bluetooth device
-     */
-    public class BluetoothClient extends Thread {
-
-        /**
-         * @member  mSocket     Socket that is used to communicate with the device
-         * @member  mDevice     Device that is to be communicated with
-         */
-        private final BluetoothSocket mSocket;
-        private final BluetoothDevice mDevice;
-
-        //Constructor
-        public BluetoothClient(BluetoothDevice device)
-        {
-            BluetoothSocket tmp = null;
-
-            try {   tmp = device.createRfcommSocketToServiceRecord(myUUID);  }
-            catch (IOException error)
-            {
-                Log.e("BLUETOOTH_CONNECTION", "Creating socket has failed: " + error.getMessage());
-                mSocket = null;
-                mDevice = device;
-                return;
-            }
-
-            try
-            {
-                //try connecting to socket, if fails then try fallback method
-                tmp.connect();
-            }
-            catch (IOException err)
-            {
-                //connecting through socket failed --> fallback
-                try
-                {
-                    //Android devices with version higher than 4.2 will need to use this
-                    tmp = (BluetoothSocket)device.getClass().getMethod("createRfcommSocket", new Class[] {int.class}).invoke(device, Integer.valueOf(1));
-                    tmp.connect();
-                    Log.i("Bluetooth", "Socket connection success");
-                }
-                catch (Exception er)
-                {
-                    Log.e("Bluetooth", "Socket fallback failed: ");
-                    Log.e("Bluetooth", er.getMessage());
-                    mSocket = null;
-                    mDevice = device;
-                    return; //return as fallback fails
-                }
-
-                //set the thread members
-                mSocket = tmp;
-                mDevice = device;
-                return; //fallback succeeded
-            }
-
-
-            //set the thread members
-            mSocket = tmp;
-            mDevice = device;
-            return; //no fallback needed, everything worked
-        }
-
-        /**
-         * get the bluetooth socket
-         * @return  BluetoothSocket Socket that is used for communication
-         */
-        public BluetoothSocket getSocket(){
-            return mSocket;
-        }
-
-        /**
-         * Create a connection to the device
-         */
-        public void run()
-        {
-            // Cancel discovery because it otherwise slows down the connection.
-            //mBluetoothAdapter.cancelDiscovery();
-
-            try {
-                if(mSocket.isConnected())
-                {
-                    Log.i("Bluetooth", "Connection already exists!");
-                }
-                else
-                {
-                    mSocket.connect();
-                }
-            }
-            catch (IOException connectException)
-            {
-                Log.e("BluetoothClient", "Error in connecting to Socket: " + connectException.getMessage());
-                return;
-            }
-            return;
-        }
-
-        /**
-         * Destroy the connection
-         */
-        public void cancel()
-        {
-            try
-            {
-                mSocket.close();
-            }
-            catch (IOException e)
-            {
-                Log.e("BluetoothClient", "Could not close the client socket", e);
-            }
-        }
-    }
-
-
-    /**
-     * @class   BluetoothClient_Listen     receive Bluetooth communication from other devices (act as a server)
-     */
-    public class BluetoothClient_Listen extends Thread {
-
-        private final BluetoothServerSocket mServerSocket;
-        private static final String NAME = "Android phone client";
-
-        public BluetoothClient_Listen() {
-
-            BluetoothServerSocket tmp = null;
-            try
-            {
-                tmp = mBluetoothAdapter.listenUsingRfcommWithServiceRecord(NAME, myUUID);
-            }
-            catch (IOException ex) {
-                Log.e("Bluetooth", ex.getMessage());
-            }
-            mServerSocket = tmp;
-        }
-
-        @Override
-        public void run() {
-            BluetoothSocket socket = null;
-            while(true)
-            {
-                try {
-
-
-                    socket = mServerSocket.accept();
-                    if(socket != null)
-                    {
-                        Log.i("Bluetooth", "Communication received!");
-                        Toast.makeText(mActivity.getApplicationContext(), "Got communication", Toast.LENGTH_SHORT).show();
-                        mServerSocket.close();
-                        break;
-                    }
-                }
-                catch (IOException e){
-                    break;
-                }
-            }
-
-        }
-
-        // Closes the connect socket and causes the thread to finish.
-        public void cancel() {
-            try {
-                mServerSocket.close();
-            } catch (IOException e) {
-            }
-        }
-
-    }
-
-    /**
-     * @class   BluetoothClient_Write     Manage connection between two devices
-     */
-    public class BluetoothClient_Write extends Thread{
-
-        /**
-         * @member  mSocket         Contains target bluetoothsocket
-         * @member  mInputStream    The data received from other device
-         * @member  mOutputStream   The data sent to other device
-         * @member  mBuffer         Temporary variable contains the data
-         * @member  mHandler        Handle data reading
-         */
-        private final BluetoothSocket mSocket;
-        private final InputStream mInputStream;
-        private final OutputStream mOutputStream;
-        private byte[] mBuffer;
-        private android.os.Handler mHandler;
-
-        /**
-         * @function     BluetoothClient  Constructor
-         * @param       "socket"        Socket assigned to communicate with specified device
-         */
-        public BluetoothClient_Write(BluetoothSocket socket) {
-            mSocket = socket;
-            InputStream tmpIn = null;
-            OutputStream tmpOut = null;
-
-            try
-            {
-                if (!mSocket.isConnected()) {
-                    mSocket.connect();
-                }
-            }
-            catch (Exception e)
-            {
-                Log.e("error", e.getMessage());
-            }
-
-            try {
-                tmpIn = socket.getInputStream();
-            }
-            catch (IOException error) {
-                Log.e("Bluetooth_connector", "BluetoothClient_Write InputStream failed", error);
-            }
-
-            try {
-                tmpOut = socket.getOutputStream();
-            }
-            catch (IOException error) {
-                Log.e("Bluetooth_connector", "BluetoothClient_Write OutputStream failed", error);
-            }
-
-            mInputStream = tmpIn;
-            mOutputStream = tmpOut;
-        }
-
-        /**
-         * Get data from remote device
-         */
-        public void run(){
-            mBuffer = new byte[1024];
-            int numBytes;
-
-            while(true){
-                try {
-                    numBytes = mInputStream.read(mBuffer);
-
-                    /**
-                     * @param {int}     arg1    What is received
-                     * @param {int}     arg2
-                     * @param {int}     arg3
-                     * @param {byte[]}  arg4    The message
-                     */
-                    Message mMessage = mHandler.obtainMessage(0, numBytes, -1, mBuffer);
-
-                    mMessage.sendToTarget();
-
-                } catch (IOException e){
-                    Log.e("Bluetooth_error", "Error with reading data", e);
-                    break;
-                }
-            }
-        }
-
-        /**
-         * @function write  Send data "bytes" to remote device
-         * @param bytes The data to be send
-         */
-        public void write(byte[] bytes){
-            try {
-                mOutputStream.write(bytes);
-                mOutputStream.flush();
-            }
-            catch (NullPointerException nullE){
-                Log.e("Bluetooth_Handler", nullE.getMessage());
-            }
-            catch (IOException e){
-                Log.e("Bluetooth_message", "Error in writing to remote device", e);
-
-                //send failure msg to activity
-                Message writtenMsg = mHandler.obtainMessage(2);
-                Bundle bundle = new Bundle();
-                bundle.putString("toast", "Could not send data!");
-                writtenMsg.setData(bundle);
-                mHandler.sendMessage(writtenMsg);
-            }
-        }
-
-        /**
-         * @function cancel Close the thread
-         */
-        public void cancel(){
-            try {
-                mSocket.close();
-            } catch (IOException e){
-                Log.e("Bluetooth_connector", "Closing mSocket failed", e);
-            }
-        }
-    }
-
 }

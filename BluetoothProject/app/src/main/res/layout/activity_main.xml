@@ -10,11 +10,9 @@
     <android.support.constraint.ConstraintLayout
         android:id="@+id/ListContainer"
         android:layout_width="0dp"
-        android:layout_height="431dp"
-        android:layout_marginEnd="24dp"
+        android:layout_height="410dp"
         android:layout_marginLeft="24dp"
         android:layout_marginRight="24dp"
-        android:layout_marginStart="24dp"
         android:layout_marginTop="2dp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
@@ -111,7 +109,7 @@
         android:layout_marginBottom="16dp"
         android:layout_marginStart="148dp"
         android:clickable="true"
-        android:onClick="startMsgActivity"
+        android:onClick="onClick_startMsgActivity"
         android:src="@android:drawable/ic_dialog_info"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
@@ -120,9 +118,15 @@
         android:id="@+id/selectedMac"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="140dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
         android:text="TextView"
+        android:textSize="18sp"
+        android:textStyle="italic"
+        android:visibility="invisible"
         app:layout_constraintBottom_toTopOf="@+id/StartConnectionButton"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
 
