@@ -51,6 +51,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
     public static final int ALLOW_BLUETOOTH_CODE = 456;
 
 
+
     /**
      * App is created
      * @param savedInstanceState
@@ -73,6 +74,14 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         DeviceAdapter deviceListAdapter = new DeviceAdapter(BluetoothController.foundDevices, this, this);
         deviceList.setAdapter(deviceListAdapter);
 
+        enableBluetooth();
+    }
+
+    /**
+     * Check if bluetooth is enabled
+     */
+    private void enableBluetooth()
+    {
         //check if phone supports bluetooth communication
         if (BluetoothController.mBluetoothAdapter == null)
         {
@@ -81,16 +90,16 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
             Log.e("Bluetooth", "Bluetooth is not supported by this device");
 
             AlertDialog.Builder alert = new AlertDialog.Builder(this);
-                alert.setTitle("Bluetooth not supported");
-                alert.setMessage("I guess this phone cannot use Bluetooth..." + "\n" + "\n" + "Hint: Android emulator cannot emulate bluetooth, use real phone instead");
-                alert.setCancelable(false);
-                alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        //close application
-                        System.exit(0);
-                    }
-                });
+            alert.setTitle("Bluetooth not supported");
+            alert.setMessage("I guess this phone cannot use Bluetooth..." + "\n" + "\n" + "Hint: Android emulator cannot emulate bluetooth, use real phone instead");
+            alert.setCancelable(false);
+            alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    //close application
+                    System.exit(0);
+                }
+            });
             AlertDialog dialog = alert.create();
 
             dialog.show();
@@ -114,10 +123,8 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
                 Log.i("Bluetooth_status", "Bluetooth is not Enabled");
             }
         }
-
-
-
     }
+
 
     /**
      * Clear current list and start looking for new bluetooth devices
@@ -128,16 +135,21 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
 
         boolean isListEmpty = foundDevices.isEmpty();
 
-        //Empty list
+        //Empty the list of found devices
         if(!isListEmpty)
         {
             foundDevices.clear();
+
+            //inform recyclerview adapter that list of devices has been changed
             deviceList.getAdapter().notifyDataSetChanged();
         }
 
         BluetoothController.FindNewDevices();
-        //program continues in BroadcastReceiver.ActionDiscovery finished
+        //program continues in "BroadcastReceiver.ActionDiscovery_finished"
     }
+
+
+
 
     //onClick functions:
 
@@ -151,12 +163,20 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         */
     }
 
+    /**
+     * Exit the application
+     * @param parent
+     */
     public void onExitClick(View parent){
         Intent leave = new Intent(Intent.ACTION_MAIN);
         leave.addCategory(Intent.CATEGORY_HOME);
         leave.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(leave);
     }
+
+
+
+
 
     //Receivers:
 
@@ -242,6 +262,9 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
 
     /**
      * Was bluetooth enabled?
+     * Get result of activity
+     * Example:
+     * Turn Bluetooth on Activity
      * @param requestCode
      * @param resultCode
      * @param data
