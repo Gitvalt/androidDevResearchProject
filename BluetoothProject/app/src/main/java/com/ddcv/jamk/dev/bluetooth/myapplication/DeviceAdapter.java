@@ -1,5 +1,6 @@
 package com.ddcv.jamk.dev.bluetooth.myapplication;
 
+import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.support.v4.util.ArrayMap;
 import android.support.v7.widget.RecyclerView;
@@ -20,6 +21,7 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
      */
     private ArrayMap<String, BluetoothDevice> deviceArrayMap;
     public DeviceListener callback;
+    public Activity activity;
 
 
 
@@ -28,10 +30,11 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
     }
 
     //Constructor
-    public DeviceAdapter(ArrayMap<String, BluetoothDevice> devList, DeviceListener deviceListener)
+    public DeviceAdapter(ArrayMap<String, BluetoothDevice> devList, DeviceListener deviceListener, Activity act)
     {
         deviceArrayMap = devList;
         this.callback = deviceListener;
+        activity = act;
     }
 
     @Override
@@ -79,14 +82,25 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.ViewHolder
         public ImageView deviceImage;
         public TextView deviceAddress;
         public TextView deviceStatus;
+        public TextView selectedMac;
 
         public ViewHolder(View itemView) {
             super(itemView);
             deviceImage = (ImageView)itemView.findViewById(R.id.logo);
             deviceAddress = (TextView)itemView.findViewById(R.id.Address);
             deviceStatus = (TextView)itemView.findViewById(R.id.Status);
+            selectedMac = (TextView) activity.findViewById(R.id.selectedMac);
+
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    BluetoothDevice selectedClickDevice = deviceArrayMap.valueAt(getAdapterPosition());
+                    selectedMac.setText(selectedClickDevice.getAddress());
 
 
+                }
+
+            });
 
             itemView.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override

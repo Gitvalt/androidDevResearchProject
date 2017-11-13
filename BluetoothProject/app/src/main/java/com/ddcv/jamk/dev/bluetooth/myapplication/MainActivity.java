@@ -5,29 +5,23 @@ import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothServerSocket;
-import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.os.Message;
+import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.util.ArrayMap;
-import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
-import com.ddcv.jamk.dev.bluetooth.myapplication.BluetoothConnectionManager;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Method;
-import java.util.UUID;
+
 
 public class MainActivity extends Activity implements DeviceAdapter.DeviceListener {
 
@@ -44,7 +38,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
      * @member  ALLOW_BLUETOOTH_CODE        Tag for permissions
      *
      */
-
+    public static final String EXTRA_MESSAGE = "com.ddcv.jamk.dev.bluetooth.myapplication.MESSAGE";
     private ProgressBar spinningCircle;
 
     private RecyclerView deviceList;
@@ -76,7 +70,7 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
         BluetoothController = new BluetoothConnectionManager(getApplicationContext(), this, mReceiver);
 
         deviceList.setLayoutManager(layoutManager);
-        DeviceAdapter deviceListAdapter = new DeviceAdapter(BluetoothController.foundDevices, this);
+        DeviceAdapter deviceListAdapter = new DeviceAdapter(BluetoothController.foundDevices, this, this);
         deviceList.setAdapter(deviceListAdapter);
 
         //check if phone supports bluetooth communication
@@ -388,6 +382,13 @@ public class MainActivity extends Activity implements DeviceAdapter.DeviceListen
             deviceList.setLayoutManager(layoutManager);
             deviceList.getAdapter().notifyDataSetChanged();
         }
+    }
+
+    public void startMsgActivity(View view) {
+        Intent intent = new Intent(this, MsgActivity.class);
+        TextView mactext = (TextView) findViewById(R.id.selectedMac);
+        intent.putExtra(EXTRA_MESSAGE, mactext.getText().toString());
+        startActivity(intent);
     }
 
     //----
