@@ -37,10 +37,12 @@ public class MsgActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_msg);
 
-
+        //check if devices supports bluetooth
         if (mBluetoothAdapter == null) {
             // Device does not support Bluetooth
         }
+        
+        //check if bluetooth is currently on
         if (!mBluetoothAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, ENABLE_BLUETOOTH_CODE);
@@ -48,17 +50,20 @@ public class MsgActivity extends AppCompatActivity {
 
         Log.v("bluetooth", "testi");
 
-
+        //get bluetoothDevice and physical address from the intent
         Intent intent = getIntent();
         String deviceMAC = intent.getStringExtra(MainActivity.EXTRA_MESSAGE);
-
         mmDevice = mBluetoothAdapter.getRemoteDevice(deviceMAC);
 
+        //display physical address in a message
         Toast toast = Toast.makeText(getApplicationContext(), deviceMAC, Toast.LENGTH_SHORT);
         toast.show();
 
     }
 
+    /**
+    * Create a bluetoothconnection
+    */
     public void createBluetooth(View v) {
         if (connectThread == null) {
             connectThread = new ConnectThread(mmDevice);
@@ -69,6 +74,9 @@ public class MsgActivity extends AppCompatActivity {
         }
     }
 
+    /**
+    * Cancel bluetooth connection
+    */
     public void cancelBluetooth(View v) {
         if ( connectThread != null)
         {
@@ -79,12 +87,19 @@ public class MsgActivity extends AppCompatActivity {
         }
     }
 
+    
+    /**
+    * send message through bluetooth
+    */
     public void sendBluetooth(View v) {
         try {
             connectThread.sendMessage();
         } catch (Exception e) {Log.v("bluetooth", "Could not send message");}
     }
 
+    /**
+    * Act as server. NOT IMPLEMENTED!
+    */
     public void serverBluetooth(View v)
     {
         try
@@ -98,6 +113,9 @@ public class MsgActivity extends AppCompatActivity {
         }
     }
 
+    /**
+    * Connect to bluetooth device thread
+    */
     private class ConnectThread extends Thread {
         private BluetoothSocket mmSocket;
         private BluetoothDevice mmDevice;
@@ -210,6 +228,7 @@ public class MsgActivity extends AppCompatActivity {
         }
     }
 
+    //NOT IMPLEMENTED
     private class ActAsServerThread extends Thread {
         private BluetoothServerSocket mmServerSocket;
         private BluetoothDevice mmDevice;
